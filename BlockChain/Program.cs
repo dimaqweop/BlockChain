@@ -42,11 +42,48 @@ var displayService = new BlockChainDisplayService();
 //    blockChain.Chain[2].Author = "Alex";
 //displayService.PrintValidationResult(blockChain.IsValid()); 
 
+// HW_1
+
+//Console.WriteLine("Adding blocks to chain: ");
+//blockChain.AddBlock("Transaction 1");
+//blockChain.AddBlock("Transaction 2");
+//blockChain.AddBlock("Transaction 3");
+//blockChain.AddBlock("Transaction 4");
+
+//displayService.PrintBlockChain(blockChain.Chain);
+
+//int initialCheck = blockChain.GetInvalidBlockIndex();
+//if (initialCheck == -1)
+//{
+//    Console.WriteLine("Starting validation: Chain fully valid");
+//}
+
+//blockChain.Chain[2].Data = "Hacker data";
+//int invalidIndex = blockChain.GetInvalidBlockIndex();
+
+//if (invalidIndex != -1)
+//{
+//    Console.WriteLine("Attention! An integrity violation has been detected. The counterfeit block is number 2.");
+//}
+//else
+//{
+//    Console.WriteLine("Chain valid");
+//}
+
+
 
 string choice;
 
 do
 {
+    Console.WriteLine("BlockChain Menu");
+    Console.WriteLine("1. Add Block");
+    Console.WriteLine("2. Validate Chain");
+    Console.WriteLine("3. Print Chain");
+    Console.WriteLine("0. Exit");
+    Console.Write("Choice: ");
+
+
     choice = Console.ReadLine();
 
     switch (choice)
@@ -54,7 +91,36 @@ do
         case "1":
             Console.WriteLine("Enter data for block: ");
             var data = Console.ReadLine();
-            blockChain.AddBlock(data);
+
+
+            using (var cts = new CancellationTokenSource())
+            {
+                //var networkTask = Task.Run(async () =>
+                //{
+                //    int delay = new Random().Next(2000, 8000);
+                //    await Task.Delay(delay);
+
+                //    if (!cts.IsCancellationRequested)
+                //    {
+                //        Console.WriteLine($"\nAnother chain found a block rather than {delay} ms!");
+                //        cts.Cancel();
+                //    }
+                //});
+
+                try
+                {
+                    Console.WriteLine("Starting Mining...");
+
+                    await blockChain.AddBlockAsync(data, cts.Token);
+                    cts.Cancel();
+                    Console.WriteLine("\nSuccess! Block has found!");
+                }
+                catch
+                {
+                    Console.WriteLine("\nRejected! Local mining rejected!");
+                }
+            }
+
             break;
         case "2":
             displayService.PrintValidationResult(blockChain.IsValid());
@@ -67,5 +133,5 @@ do
             break;
     }
 }
-    
+
 while (choice != "0");

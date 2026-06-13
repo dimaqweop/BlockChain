@@ -31,16 +31,46 @@ namespace BlockChain.Services
             Chain.Add(genesisBlock);
         }
 
-        
-        public void AddBlock(string data)
+        public async Task AddBlockAsync(string data, CancellationToken cancellationToken)
         {
-            var lastBlock = Chain.Last(); 
+            var lastBlock = Chain.Last();
 
             var newBlock = new Block(lastBlock.Index + 1, DateTime.UtcNow, data, lastBlock.Hash);
 
-            miningService.MineBlock(block: newBlock, difficult: Difficulty);
-            newBlock.Hash = _hashingService.ComputeHash(newBlock); 
+            await miningService.MineBlock(block: newBlock, difficult: Difficulty, cancellationToken);
             Chain.Add(newBlock);
+        }
+
+        //public void AddBlock(string data)
+        //{
+        //    var lastBlock = Chain.Last();
+
+        //    var newBlock = new Block(lastBlock.Index + 1, DateTime.UtcNow, data, lastBlock.Hash);
+
+        //    //miningService.MineBlock(block: newBlock, difficult: Difficulty);
+        //    newBlock.Hash = _hashingService.ComputeHash(newBlock);
+        //    Chain.Add(newBlock);
+        //}
+
+        public int GetInvalidBlockIndex()
+        {
+            for (int i = 1; i < Chain.Count; i++)
+            {
+                var currentBlock = Chain[i];
+                var previousBlock = Chain[i - 1];
+
+                if (currentBlock.Hash != _hashingService.ComputeHash(currentBlock))
+                {
+                    return i;
+                }
+
+                if (currentBlock.PreviousHash != previousBlock.Hash)
+                {
+                    return i;
+                }
+            }
+
+            return -1;
         }
 
         public Block FindBlockByHash(string targetHash)
