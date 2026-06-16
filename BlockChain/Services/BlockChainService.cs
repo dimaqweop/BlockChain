@@ -12,45 +12,71 @@ namespace BlockChain.Services
         public List<Block> Chain { get; set; }
 
         private readonly HashingService _hashingService;
-        private readonly MiningService miningService;
+        private readonly MiningService _miningService;
+        private readonly TransactionService _transactionService;
         public int Difficulty { get; private set; }
+
+        private readonly double _targetBlockTime = 20;
+        private readonly int _adjustmentInterval = 10;
 
         public BlockChainService()
         {
             Chain = new List<Block>(); 
             _hashingService = new HashingService();
-            Difficulty = 6;
-            miningService = new MiningService(_hashingService);
+            _transactionService = new TransactionService();
+            _miningService = new MiningService(_hashingService);
+            Difficulty = 1;
             CreateGenesisBlock(); 
         }
 
         private void CreateGenesisBlock()
         {
-            var genesisBlock = new Block(0, DateTime.UtcNow, "Genesis Block", "0"); 
-            genesisBlock.Hash = _hashingService.ComputeHash(genesisBlock); 
+            var genesisBlock = new Block(0, DateTime.UtcNow, new List<Transaction>(), "0", Difficulty);
+            genesisBlock.MiningDuration = 0;
+            _miningService.MineBlock(genesisBlock, Difficulty, CancellationToken.None).GetAwaiter().GetResult();
+
             Chain.Add(genesisBlock);
         }
 
-        public async Task AddBlockAsync(string data, CancellationToken cancellationToken)
+        public async Task AddBlockAsync(List<Transaction> transactions, CancellationToken cancellationToken)
         {
+            foreach (var transaction in transactions)
+            {
+                if (!_transactionService.ValidateTransaction(transaction).IsValid)
+                {
+                    throw new InvalidOperationException("Invalid transaction");
+                }
+            }
+
             var lastBlock = Chain.Last();
+            var newBlock = new Block(lastBlock.Index + 1, DateTime.UtcNow, transactions, lastBlock.Hash, Difficulty);
 
-            var newBlock = new Block(lastBlock.Index + 1, DateTime.UtcNow, data, lastBlock.Hash);
-
-            await miningService.MineBlock(block: newBlock, difficult: Difficulty, cancellationToken);
+            await _miningService.MineBlock(block: newBlock, difficult: Difficulty, cancellationToken);
             Chain.Add(newBlock);
+
+            if (newBlock.Index % _adjustmentInterval == 0)
+            {
+                AdjustDifficulty();
+            }
         }
 
-        //public void AddBlock(string data)
-        //{
-        //    var lastBlock = Chain.Last();
+        private void AdjustDifficulty()
+        {
+            var recentBlocks = Chain.Skip(Math.Max(0, Chain.Count - _adjustmentInterval)).ToList();
+            double avgTime = recentBlocks.Average(b => b.MiningDuration);
 
-        //    var newBlock = new Block(lastBlock.Index + 1, DateTime.UtcNow, data, lastBlock.Hash);
+            double lowerBound = _targetBlockTime * 0.9;
+            double upperBound = _targetBlockTime * 1.1;
 
-        //    //miningService.MineBlock(block: newBlock, difficult: Difficulty);
-        //    newBlock.Hash = _hashingService.ComputeHash(newBlock);
-        //    Chain.Add(newBlock);
-        //}
+            if (avgTime < lowerBound)
+            {
+                Difficulty++;
+            }
+            else if (avgTime > upperBound)
+            {
+                Difficulty = Math.Max(1, Difficulty - 1);
+            }
+        }
 
         public int GetInvalidBlockIndex()
         {
@@ -85,20 +111,16 @@ namespace BlockChain.Services
                 var currentBlock = Chain[i];
                 var previousBlock = Chain[i - 1];
 
-                if (currentBlock.Hash != _hashingService.ComputeHash(currentBlock))
-                {
-                    return false; 
-                }
+                if (currentBlock.Hash != _hashingService.ComputeHash(currentBlock)) return false;
+                if (currentBlock.PreviousHash != previousBlock.Hash) return false;
+                if (!currentBlock.Hash.StartsWith(new string('0', currentBlock.Difficulty))) return false;
+                if (currentBlock.MiningDuration < 0) return false;
+                if (currentBlock.TimeStamp <= previousBlock.TimeStamp) return false;
 
-                if (currentBlock.PreviousHash != previousBlock.Hash)
-                {
-                    return false;
-                }
+                double physicalTimeDifference = (currentBlock.TimeStamp - previousBlock.TimeStamp).TotalSeconds;
+                double allowedTolerance = 2;
 
-                if (!currentBlock.Hash.StartsWith(new string('0', Difficulty)))
-                {
-                    return false;
-                }
+                if (currentBlock.MiningDuration > (physicalTimeDifference + allowedTolerance)) return false;
             }
 
             return true;

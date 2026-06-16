@@ -28,9 +28,7 @@ namespace BlockChain.Services
             object syncLock = new object();
 
             long totalHashes = 0;
-            var stopWatch = Stopwatch.StartNew();
-
-            Console.WriteLine("Mining");
+            //var stopWatch = Stopwatch.StartNew();
 
             for (int i = 0; i < cores; i++)
             {
@@ -40,13 +38,16 @@ namespace BlockChain.Services
                     var localBlock = new Models.Block(
                         block.Index,
                         block.TimeStamp,
-                        block.Data,
-                        block.PreviousHash
+                        block.Transactions,
+                        block.PreviousHash,
+                        block.Difficulty
                     );
                     localBlock.Nonce = offset;
 
                     long localHashes = 0;
                     int batchSize = 50000;
+
+                    var stopWatch = Stopwatch.StartNew();
 
                     while (!isFound && !cancellationToken.IsCancellationRequested)
                     {
@@ -57,8 +58,11 @@ namespace BlockChain.Services
                         {
                             lock (syncLock)
                             {
+                                
                                 if (!isFound && !cancellationToken.IsCancellationRequested)
                                 {
+                                    stopWatch.Stop();
+                                    block.MiningDuration = stopWatch.Elapsed.TotalSeconds;
                                     block.Nonce = localBlock.Nonce;
                                     block.Hash = localBlock.Hash;
                                     isFound = true;   
@@ -86,20 +90,20 @@ namespace BlockChain.Services
             }
             await Task.WhenAll(tasks);
 
-            stopWatch.Stop();
+            //stopWatch.Stop();
 
             cancellationToken.ThrowIfCancellationRequested();
 
-            PrintHashrate(totalHashes, stopWatch.Elapsed.TotalSeconds);
+            //PrintHashrate(totalHashes, stopWatch.Elapsed.TotalSeconds);
 
-            ThreadPool.GetMaxThreads(out int max, out _);
-            ThreadPool.GetAvailableThreads(out int available, out _);
-            int activeWorkers = max - available;
-            int processThreads = Process.GetCurrentProcess().Threads.Count;
+            //ThreadPool.GetMaxThreads(out int max, out _);
+            //ThreadPool.GetAvailableThreads(out int available, out _);
+            //int activeWorkers = max - available;
+            //int processThreads = Process.GetCurrentProcess().Threads.Count;
 
-            Console.WriteLine($"\n[Diagnostics] Tasks started: {cores}");
-            Console.WriteLine($"\n[Diagnostics] Pool threads in use: {activeWorkers}");
-            Console.WriteLine($"\n[Diagnostics] Total process threads: {processThreads}");
+            //Console.WriteLine($"\n[Diagnostics] Tasks started: {cores}");
+            //Console.WriteLine($"\n[Diagnostics] Pool threads in use: {activeWorkers}");
+            //Console.WriteLine($"\n[Diagnostics] Total process threads: {processThreads}");
 
             return block.Nonce;
         }

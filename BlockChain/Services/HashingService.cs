@@ -8,7 +8,12 @@ namespace BlockChain.Services
     {
         public string ComputeHash(Block block)
         {
-            string blockData = $"{block.Index}{block.TimeStamp}{block.Data}{block.Author}{block.PreviousHash}{block.Nonce}";
+            var totalHash = "";
+            foreach (var item in block.Transactions)
+            {
+                totalHash += ComputeHash(item.ToRowString());
+            }
+            string blockData = $"{block.Index}{block.TimeStamp.ToString("O")}{totalHash}{block.Author}{block.PreviousHash}{block.Nonce}{block.Difficulty}";
             return ComputeHash(blockData);
         }
 
