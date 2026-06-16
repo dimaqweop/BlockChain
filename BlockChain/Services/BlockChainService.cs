@@ -40,16 +40,30 @@ namespace BlockChain.Services
 
         public async Task AddBlockAsync(List<Transaction> transactions, CancellationToken cancellationToken)
         {
+            var lastBlock = Chain.Last();
+            var newBlock = new Block(lastBlock.Index + 1, DateTime.UtcNow, new List<Transaction>(), lastBlock.Hash, Difficulty);
+
+            var acceptedTransactions = new List<Transaction>();
+            int currentBlockSizeBytes = 0;
+
             foreach (var transaction in transactions)
             {
                 if (!_transactionService.ValidateTransaction(transaction).IsValid)
                 {
-                    throw new InvalidOperationException("Invalid transaction");
+                    throw new InvalidOperationException($"Invalid transaction: {transaction.Id}");
                 }
+
+                int transactionBytes = Encoding.UTF8.GetByteCount(transaction.ToRowString());
+
+                if (currentBlockSizeBytes + transactionBytes > newBlock.MaxBlockSizeBytes)
+                {
+                    break; 
+                }
+                acceptedTransactions.Add(transaction);
+                currentBlockSizeBytes += transactionBytes;
             }
 
-            var lastBlock = Chain.Last();
-            var newBlock = new Block(lastBlock.Index + 1, DateTime.UtcNow, transactions, lastBlock.Hash, Difficulty);
+            newBlock.Transactions = acceptedTransactions;
 
             await _miningService.MineBlock(block: newBlock, difficult: Difficulty, cancellationToken);
             Chain.Add(newBlock);

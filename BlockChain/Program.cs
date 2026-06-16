@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Text;
 using BlockChain.Models;
 using BlockChain.Services;
 
@@ -147,37 +148,82 @@ var hashingService = new HashingService();
 var blockChainService = new BlockChainService();
 var transactionService = new TransactionService();
 
-Console.WriteLine("Blockchain Menu");
-Console.WriteLine("1. Add Block");
-Console.WriteLine("2. Validate Blockchain");
-Console.WriteLine("3. Print Blockchain");
-Console.WriteLine("4. Exit");
+//Console.WriteLine("Blockchain Menu");
+//Console.WriteLine("1. Add Block");
+//Console.WriteLine("2. Validate Blockchain");
+//Console.WriteLine("3. Print Blockchain");
+//Console.WriteLine("4. Exit");
 
-var transaction1 = new Transaction("Alice", "Bob", 10);
-var transaction2 = new Transaction("Bob", "Charlie", 5);
-var transaction3 = new Transaction("Charlie", "Dave", 2);
-var transaction4 = new Transaction("Dave", "Alice", 1);
+//var transaction1 = new Transaction("Alice", "Bob", 10);
+//var transaction2 = new Transaction("Bob", "Charlie", 5);
+//var transaction3 = new Transaction("Charlie", "Dave", 2);
+//var transaction4 = new Transaction("Dave", "Alice", 1);
 
 
 
-while (true)
+//while (true)
+//{
+//    var choice = Console.ReadLine();
+
+//    switch (choice)
+//    {
+//        case "1":
+//            blockChainService.AddBlockAsync(new List<Transaction> { transaction1, transaction2, transaction3, transaction4 }, CancellationToken.None);
+//            Console.WriteLine("Blocks added successfuly");
+//            break;
+//        case "2":
+//            bool isValid = blockChainService.IsValid();
+//            displayService.PrintValidationResult(isValid);
+//            break;
+//        case "3":
+//            displayService.PrintBlockChain(blockChainService.Chain);
+//            break;
+//        case "4":
+//            return;
+//    }
+//}
+
+
+// Task4
+
+//var attackTx1 = new Transaction("Ali", "ceBob", 10);
+//var attackTx2 = new Transaction("Alice", "Bob", 10);
+
+//Console.WriteLine("Transaction 1: " + attackTx1.ToRowString());
+//Console.WriteLine("Transaction 2: " + attackTx2.ToRowString());
+
+//if (attackTx1.Id == attackTx2.Id)
+//{
+//    Console.WriteLine("\nWarning! Found colision: Tx1.Id == Tx2.Id");
+//    Console.WriteLine($"Generated Id from both: {attackTx1.Id}");
+//}
+
+var pendingTransactions = new List<Transaction>
 {
-    var choice = Console.ReadLine();
+    new Transaction("Alice", "Bob", 10),
+    new Transaction("Bob", "Charlie", 20),
+    new Transaction("Charlie", "Dave", 30),
+    new Transaction("Dave", "Eve", 40),
+    new Transaction("Eve", "Frank", 50),
+    new Transaction("Frank", "Grace", 60),
+    new Transaction("Grace", "Heidi", 70),
+    new Transaction("Heidi", "Ivan", 80),
+    new Transaction("Ivan", "Judy", 90),
+    new Transaction("Judy", "Mallory", 100)
+};
 
-    switch (choice)
-    {
-        case "1":
-            blockChainService.AddBlockAsync(new List<Transaction> { transaction1, transaction2, transaction3, transaction4 }, CancellationToken.None);
-            Console.WriteLine("Blocks added successfuly");
-            break;
-        case "2":
-            bool isValid = blockChainService.IsValid();
-            displayService.PrintValidationResult(isValid);
-            break;
-        case "3":
-            displayService.PrintBlockChain(blockChainService.Chain);
-            break;
-        case "4":
-            return;
-    }
+await blockChainService.AddBlockAsync(pendingTransactions, CancellationToken.None);
+
+var latestBlock = blockChainService.Chain.Last();
+
+int actualTransactionsSizeBytes = 0;
+foreach (var tx in latestBlock.Transactions)
+{
+    actualTransactionsSizeBytes += Encoding.UTF8.GetByteCount(tx.ToRowString());
 }
+
+Console.WriteLine($"Max Limit: {latestBlock.MaxBlockSizeBytes} bytes");
+Console.WriteLine($"Attempted: {pendingTransactions.Count} transactions");
+Console.WriteLine($"Accepted:  {latestBlock.Transactions.Count} transactions");
+Console.WriteLine($"Rejected:  {pendingTransactions.Count - latestBlock.Transactions.Count} transactions");
+Console.WriteLine($"Final Size:{actualTransactionsSizeBytes} bytes (Valid: {actualTransactionsSizeBytes <= latestBlock.MaxBlockSizeBytes})");

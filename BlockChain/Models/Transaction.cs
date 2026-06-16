@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Security.Cryptography;
+using System.Text.Json;
 
 namespace BlockChain.Models
 {
@@ -21,12 +23,23 @@ namespace BlockChain.Models
 
         public Transaction(string from, string to, decimal amount)
         {
-            Id = Guid.NewGuid().ToString();
+            Id = GenerateHashId(from, to, amount);
             From = from;
             To = to;
             Amount = amount;
             TimeStamp = DateTime.UtcNow;
         }
 
+        private string GenerateHashId(string from, string to, decimal amount)
+        {
+            var dataToHash = new {From = from, To = to, Amount = amount};
+
+            string jsonString = JsonSerializer.Serialize(dataToHash);
+
+            byte[] inputBytes = Encoding.UTF8.GetBytes(jsonString);
+            byte[] hashBytes = SHA256.HashData(inputBytes);
+
+            return Convert.ToHexString(hashBytes);
+        }
     }
 }
