@@ -212,13 +212,14 @@ var pendingTransactions = new List<Transaction>
     new Transaction("Judy", "Mallory", 100)
 };
 
-await blockChainService.AddBlockAsync(pendingTransactions, CancellationToken.None);
+blockChainService.AddBlock(pendingTransactions, CancellationToken.None);
 
 var latestBlock = blockChainService.Chain.Last();
 
 int actualTransactionsSizeBytes = 0;
 foreach (var tx in latestBlock.Transactions)
 {
+    Console.WriteLine(tx.From);
     actualTransactionsSizeBytes += Encoding.UTF8.GetByteCount(tx.ToRowString());
 }
 

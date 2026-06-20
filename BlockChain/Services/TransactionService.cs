@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using BlockChain.Models;
 
@@ -27,14 +28,14 @@ namespace BlockChain.Services
                 return (false, "Transaction cannot be null.");
             }
 
-            if (string.IsNullOrWhiteSpace(transaction.From)) // Перевірка на null, порожній рядок або рядок, що складається з пробілів
+            if (!IsValidCryptoAddress(transaction.From))
             {
-                return (false, "Sender cannot be empty.");
+                return (false, "Invalid Sender address. Must start with '0x', be 42 characters long, and contain only alphanumeric characters.");
             }
 
-            if (string.IsNullOrWhiteSpace(transaction.To))
+            if (!IsValidCryptoAddress(transaction.To))
             {
-                return (false, "Recipient cannot be empty.");
+                return (false, "Invalid Recipient address. Must start with '0x', be 42 characters long, and contain only alphanumeric characters.");
             }
 
             if (transaction.Amount <= 0)
@@ -43,6 +44,13 @@ namespace BlockChain.Services
             }
 
             return (true, string.Empty);
+        }
+
+        private bool IsValidCryptoAddress(string address)
+        {
+            if (string.IsNullOrWhiteSpace(address)) return false;
+
+            return Regex.IsMatch(address, @"^0x[a-zA-Z0-9]{40}$");
         }
     }
 }

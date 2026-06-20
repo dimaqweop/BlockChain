@@ -38,7 +38,7 @@ namespace BlockChain.Services
             Chain.Add(genesisBlock);
         }
 
-        public async Task AddBlockAsync(List<Transaction> transactions, CancellationToken cancellationToken)
+        public void AddBlock(List<Transaction> transactions, CancellationToken cancellationToken)
         {
             var lastBlock = Chain.Last();
             var newBlock = new Block(lastBlock.Index + 1, DateTime.UtcNow, new List<Transaction>(), lastBlock.Hash, Difficulty);
@@ -65,7 +65,7 @@ namespace BlockChain.Services
 
             newBlock.Transactions = acceptedTransactions;
 
-            await _miningService.MineBlock(block: newBlock, difficult: Difficulty, cancellationToken);
+            _miningService.MineBlock(block: newBlock, difficult: Difficulty, cancellationToken).GetAwaiter().GetResult();
             Chain.Add(newBlock);
 
             if (newBlock.Index % _adjustmentInterval == 0)
