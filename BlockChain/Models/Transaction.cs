@@ -22,7 +22,12 @@ namespace BlockChain.Models
 
         public string ToRowString()
         {
-            return $"{Id} | {From} -> {To} | Amount: {Amount} | Time: {TimeStamp.ToString("O")} {Convert.ToHexString(Signature)}"; 
+            if (Signature != null)
+            {
+                return $"{Id} | {From} -> {To} | Amount: {Amount} | Time: {TimeStamp.ToString("O")} {Convert.ToHexString(Signature)}";
+            }
+
+            return $"{Id} | {From} -> {To} | Amount: {Amount} | Time: {TimeStamp.ToString("O")}";
         }
 
         public byte[] GetDataToSign()
