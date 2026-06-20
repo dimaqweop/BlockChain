@@ -198,32 +198,52 @@ var transactionService = new TransactionService();
 //    Console.WriteLine($"Generated Id from both: {attackTx1.Id}");
 //}
 
-var pendingTransactions = new List<Transaction>
+//var pendingTransactions = new List<Transaction>
+//{
+//    new Transaction("Alice", "Bob", 10),
+//    new Transaction("Bob", "Charlie", 20),
+//    new Transaction("Charlie", "Dave", 30),
+//    new Transaction("Dave", "Eve", 40),
+//    new Transaction("Eve", "Frank", 50),
+//    new Transaction("Frank", "Grace", 60),
+//    new Transaction("Grace", "Heidi", 70),
+//    new Transaction("Heidi", "Ivan", 80),
+//    new Transaction("Ivan", "Judy", 90),
+//    new Transaction("Judy", "Mallory", 100)
+//};
+
+//await blockChainService.AddBlockAsync(pendingTransactions, CancellationToken.None);
+
+//var latestBlock = blockChainService.Chain.Last();
+
+//int actualTransactionsSizeBytes = 0;
+//foreach (var tx in latestBlock.Transactions)
+//{
+//    actualTransactionsSizeBytes += Encoding.UTF8.GetByteCount(tx.ToRowString());
+//}
+
+//Console.WriteLine($"Max Limit: {latestBlock.MaxBlockSizeBytes} bytes");
+//Console.WriteLine($"Attempted: {pendingTransactions.Count} transactions");
+//Console.WriteLine($"Accepted:  {latestBlock.Transactions.Count} transactions");
+//Console.WriteLine($"Rejected:  {pendingTransactions.Count - latestBlock.Transactions.Count} transactions");
+//Console.WriteLine($"Final Size:{actualTransactionsSizeBytes} bytes (Valid: {actualTransactionsSizeBytes <= latestBlock.MaxBlockSizeBytes})");
+
+
+
+
+
+
+// HW_3
+
+blockChainService.AddBlock(new List<Transaction>(), CancellationToken.None);
+blockChainService.AddBlock(new List<Transaction>(), CancellationToken.None);
+blockChainService.AddBlock(new List<Transaction>(), CancellationToken.None);
+
+foreach (var block in blockChainService.Chain.ToList())
 {
-    new Transaction("Alice", "Bob", 10),
-    new Transaction("Bob", "Charlie", 20),
-    new Transaction("Charlie", "Dave", 30),
-    new Transaction("Dave", "Eve", 40),
-    new Transaction("Eve", "Frank", 50),
-    new Transaction("Frank", "Grace", 60),
-    new Transaction("Grace", "Heidi", 70),
-    new Transaction("Heidi", "Ivan", 80),
-    new Transaction("Ivan", "Judy", 90),
-    new Transaction("Judy", "Mallory", 100)
-};
-
-await blockChainService.AddBlockAsync(pendingTransactions, CancellationToken.None);
-
-var latestBlock = blockChainService.Chain.Last();
-
-int actualTransactionsSizeBytes = 0;
-foreach (var tx in latestBlock.Transactions)
-{
-    actualTransactionsSizeBytes += Encoding.UTF8.GetByteCount(tx.ToRowString());
+    Console.WriteLine($"Block: {block.Index} | Hash {block.Hash}");
 }
 
-Console.WriteLine($"Max Limit: {latestBlock.MaxBlockSizeBytes} bytes");
-Console.WriteLine($"Attempted: {pendingTransactions.Count} transactions");
-Console.WriteLine($"Accepted:  {latestBlock.Transactions.Count} transactions");
-Console.WriteLine($"Rejected:  {pendingTransactions.Count - latestBlock.Transactions.Count} transactions");
-Console.WriteLine($"Final Size:{actualTransactionsSizeBytes} bytes (Valid: {actualTransactionsSizeBytes <= latestBlock.MaxBlockSizeBytes})");
+Console.WriteLine($"Is chain valid? {blockChainService.IsValid()}");
+
+
