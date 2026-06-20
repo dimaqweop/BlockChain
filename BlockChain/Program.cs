@@ -198,33 +198,67 @@ var transactionService = new TransactionService();
 //    Console.WriteLine($"Generated Id from both: {attackTx1.Id}");
 //}
 
-var pendingTransactions = new List<Transaction>
+//var pendingTransactions = new List<Transaction>
+//{
+//    new Transaction("Alice", "Bob", 10),
+//    new Transaction("Bob", "Charlie", 20),
+//    new Transaction("Charlie", "Dave", 30),
+//    new Transaction("Dave", "Eve", 40),
+//    new Transaction("Eve", "Frank", 50),
+//    new Transaction("Frank", "Grace", 60),
+//    new Transaction("Grace", "Heidi", 70),
+//    new Transaction("Heidi", "Ivan", 80),
+//    new Transaction("Ivan", "Judy", 90),
+//    new Transaction("Judy", "Mallory", 100)
+//};
+
+//blockChainService.AddBlock(pendingTransactions, CancellationToken.None);
+
+//var latestBlock = blockChainService.Chain.Last();
+
+//int actualTransactionsSizeBytes = 0;
+//foreach (var tx in latestBlock.Transactions)
+//{
+//    Console.WriteLine(tx.From);
+//    actualTransactionsSizeBytes += Encoding.UTF8.GetByteCount(tx.ToRowString());
+//}
+
+//Console.WriteLine($"Max Limit: {latestBlock.MaxBlockSizeBytes} bytes");
+//Console.WriteLine($"Attempted: {pendingTransactions.Count} transactions");
+//Console.WriteLine($"Accepted:  {latestBlock.Transactions.Count} transactions");
+//Console.WriteLine($"Rejected:  {pendingTransactions.Count - latestBlock.Transactions.Count} transactions");
+//Console.WriteLine($"Final Size:{actualTransactionsSizeBytes} bytes (Valid: {actualTransactionsSizeBytes <= latestBlock.MaxBlockSizeBytes})");
+
+static string GenerateValidAddress()
 {
-    new Transaction("Alice", "Bob", 10),
-    new Transaction("Bob", "Charlie", 20),
-    new Transaction("Charlie", "Dave", 30),
-    new Transaction("Dave", "Eve", 40),
-    new Transaction("Eve", "Frank", 50),
-    new Transaction("Frank", "Grace", 60),
-    new Transaction("Grace", "Heidi", 70),
-    new Transaction("Heidi", "Ivan", 80),
-    new Transaction("Ivan", "Judy", 90),
-    new Transaction("Judy", "Mallory", 100)
-};
-
-blockChainService.AddBlock(pendingTransactions, CancellationToken.None);
-
-var latestBlock = blockChainService.Chain.Last();
-
-int actualTransactionsSizeBytes = 0;
-foreach (var tx in latestBlock.Transactions)
-{
-    Console.WriteLine(tx.From);
-    actualTransactionsSizeBytes += Encoding.UTF8.GetByteCount(tx.ToRowString());
+    byte[] randomBytes = new byte[20];
+    using (var rng = System.Security.Cryptography.RandomNumberGenerator.Create())
+    {
+        rng.GetBytes(randomBytes);
+    }
+    return "0x" + Convert.ToHexString(randomBytes).ToLower();
 }
 
-Console.WriteLine($"Max Limit: {latestBlock.MaxBlockSizeBytes} bytes");
-Console.WriteLine($"Attempted: {pendingTransactions.Count} transactions");
-Console.WriteLine($"Accepted:  {latestBlock.Transactions.Count} transactions");
-Console.WriteLine($"Rejected:  {pendingTransactions.Count - latestBlock.Transactions.Count} transactions");
-Console.WriteLine($"Final Size:{actualTransactionsSizeBytes} bytes (Valid: {actualTransactionsSizeBytes <= latestBlock.MaxBlockSizeBytes})");
+var mempool = new List<Transaction>();
+
+Console.WriteLine("===== 15 Transactions =====");
+for (int i = 0; i < 15; i++)
+{
+    string from = GenerateValidAddress();
+    string to = GenerateValidAddress();
+    var tx = transactionService.CreateTransaction(from, to, (i + 1) * 10);
+    mempool.Add(tx);
+    displayService.PrintTransaction(tx);
+}
+
+Console.ForegroundColor = ConsoleColor.Yellow;
+Console.WriteLine("\n=== Creating transaction on address 'Bob' ===");
+var invalidTx = new Transaction(GenerateValidAddress(), "Bob", 20);
+mempool.Add(invalidTx);
+displayService.PrintTransaction(invalidTx);
+Console.ResetColor();
+
+Console.WriteLine("=== Starting Processing ===");
+blockChainService.ProcessTransactions(mempool, CancellationToken.None);
+
+displayService.PrintBlockChain(blockChainService.Chain);
