@@ -16,7 +16,7 @@
         public int Difficulty { get; set; }
 
         public string Hash { get; set; }
-        public int MaxBlockSizeBytes { get; } = 256;
+        public int MaxBlockSizeBytes { get; } = 1000000;
 
         public Block(int index, DateTime timeStamp, List<Transaction> transactions, string previousHash, int difficulty)
         {

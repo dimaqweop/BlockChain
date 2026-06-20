@@ -16,18 +16,29 @@ namespace BlockChain.Models
         public decimal Amount { get; set; }
         public DateTime TimeStamp { get; set; }
 
+        public byte[] SenderPublicKey { get; set; }
+        public byte[] Signature { get; set; }
+
+
         public string ToRowString()
         {
-            return $"{Id} | {From} -> {To} | Amount: {Amount} | Time: {TimeStamp.ToString("O")}";
+            return $"{Id} | {From} -> {To} | Amount: {Amount} | Time: {TimeStamp.ToString("O")} {Convert.ToHexString(Signature)}"; 
         }
 
-        public Transaction(string from, string to, decimal amount)
+        public byte[] GetDataToSign()
+        {
+            string row = $"{Id}{From}{To}{Amount}{TimeStamp.ToString("O")}";
+            return Encoding.UTF8.GetBytes(row);
+        }
+
+        public Transaction(string from, string to, decimal amount, byte[] senderPublicKey)
         {
             Id = GenerateHashId(from, to, amount);
             From = from;
             To = to;
             Amount = amount;
             TimeStamp = DateTime.UtcNow;
+            this.SenderPublicKey = senderPublicKey;
         }
 
         private string GenerateHashId(string from, string to, decimal amount)
