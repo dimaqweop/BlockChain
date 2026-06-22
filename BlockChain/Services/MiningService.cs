@@ -20,8 +20,8 @@ namespace BlockChain.Services
 
         public async Task<long> MineBlock(Models.Block block, int difficult, CancellationToken cancellationToken)
         {
-            //string target = new string('0', difficult);
-            string target = "CAFE";
+            string target = new string('0', difficult);
+            //string target = "CAFE";
             int cores = Environment.ProcessorCount;
             var tasks = new Task[cores];
 

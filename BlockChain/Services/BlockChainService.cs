@@ -169,8 +169,8 @@ namespace BlockChain.Services
 
                 if (currentBlock.Hash != _hashingService.ComputeHash(currentBlock)) return false;
                 if (currentBlock.PreviousHash != previousBlock.Hash) return false;
-                //if (!currentBlock.Hash.StartsWith(new string('0', currentBlock.Difficulty))) return false;
-                if (!currentBlock.Hash.StartsWith("CAFE")) return false;
+                if (!currentBlock.Hash.StartsWith(new string('0', currentBlock.Difficulty))) return false;
+                //if (!currentBlock.Hash.StartsWith("CAFE")) return false;
                 if (currentBlock.MiningDuration < 0) return false;
                 if (currentBlock.TimeStamp <= previousBlock.TimeStamp) return false;
 

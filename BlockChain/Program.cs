@@ -229,22 +229,6 @@ var transactionService = new TransactionService();
 //Console.WriteLine($"Rejected:  {pendingTransactions.Count - latestBlock.Transactions.Count} transactions");
 //Console.WriteLine($"Final Size:{actualTransactionsSizeBytes} bytes (Valid: {actualTransactionsSizeBytes <= latestBlock.MaxBlockSizeBytes})");
 
-// HW_3
-
-//var mempool = new List<Transaction>();
-//blockChainService.AddBlock(new List<Transaction>(), CancellationToken.None);
-//blockChainService.AddBlock(new List<Transaction>(), CancellationToken.None);
-//blockChainService.AddBlock(new List<Transaction>(), CancellationToken.None);
-
-static string GenerateValidAddress()
-{
-    byte[] randomBytes = new byte[20];
-    using (var rng = System.Security.Cryptography.RandomNumberGenerator.Create())
-    {
-        rng.GetBytes(randomBytes);
-    }
-    return "0x" + Convert.ToHexString(randomBytes).ToLower();
-}
 //var pendingTransactions = new List<Transaction>
 //{
 //    new Transaction("Alice", "Bob", 10),
@@ -275,11 +259,27 @@ static string GenerateValidAddress()
 //Console.WriteLine($"Rejected:  {pendingTransactions.Count - latestBlock.Transactions.Count} transactions");
 //Console.WriteLine($"Final Size:{actualTransactionsSizeBytes} bytes (Valid: {actualTransactionsSizeBytes <= latestBlock.MaxBlockSizeBytes})");
 
+// HW_3
 
 
+//blockChainService.AddBlock(new List<Transaction>(), CancellationToken.None);
+//blockChainService.AddBlock(new List<Transaction>(), CancellationToken.None);
+//blockChainService.AddBlock(new List<Transaction>(), CancellationToken.None);
 
+//Console.WriteLine($"Block: {block.Index} | Hash {block.Hash}");
+//Console.WriteLine($"Is chain valid? {blockChainService.IsValid()}");
 
+static string GenerateValidAddress()
+{
+    byte[] randomBytes = new byte[20];
+    using (var rng = System.Security.Cryptography.RandomNumberGenerator.Create())
+    {
+        rng.GetBytes(randomBytes);
+    }
+    return "0x" + Convert.ToHexString(randomBytes).ToLower();
+}
 
+var mempool = new List<Transaction>();
 
 Console.WriteLine("===== 15 Transactions =====");
 for (int i = 0; i < 15; i++)
@@ -288,9 +288,8 @@ foreach (var block in blockChainService.Chain.ToList())
     string from = GenerateValidAddress();
     string to = GenerateValidAddress();
     var tx = transactionService.CreateTransaction(from, to, (i + 1) * 10);
-    mempool.Add(tx);
     displayService.PrintTransaction(tx);
-    Console.WriteLine($"Block: {block.Index} | Hash {block.Hash}");
+    mempool.Add(tx);
 }
 
 Console.ForegroundColor = ConsoleColor.Yellow;
@@ -304,6 +303,5 @@ Console.WriteLine("=== Starting Processing ===");
 blockChainService.ProcessTransactions(mempool, CancellationToken.None);
 
 displayService.PrintBlockChain(blockChainService.Chain);
-Console.WriteLine($"Is chain valid? {blockChainService.IsValid()}");
 
 
