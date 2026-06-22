@@ -19,6 +19,8 @@ namespace BlockChain.Services
         private readonly double _targetBlockTime = 20;
         private readonly int _adjustmentInterval = 10;
 
+        public int MaxBlockSizeBytes { get; } = 256;
+
         public BlockChainService()
         {
             Chain = new List<Block>(); 
@@ -71,6 +73,46 @@ namespace BlockChain.Services
             if (newBlock.Index % _adjustmentInterval == 0)
             {
                 AdjustDifficulty();
+            }
+        }
+
+        public void ProcessTransactions(List<Transaction> incomingTransactions, CancellationToken cancellationToken)
+        {
+            var currentChunk = new List<Transaction>();
+            int currentSize = 0;
+
+            foreach (var tx in incomingTransactions)
+            {
+                var (isValid, errorMessage) = _transactionService.ValidateTransaction(tx);
+
+                if (!isValid)
+                {
+                    Console.WriteLine($"Rejected: {errorMessage} (To: {tx.To})");
+                    continue;
+                }
+
+                int txSize = Encoding.UTF8.GetByteCount(tx.ToRowString());
+
+                if (txSize > MaxBlockSizeBytes)
+                {
+                    continue;
+                }
+
+                if (currentSize + txSize > MaxBlockSizeBytes)
+                {
+                    AddBlock(currentChunk, cancellationToken);
+
+                    currentChunk = new List<Transaction>();
+                    currentSize = 0;
+                }
+
+                currentChunk.Add(tx);
+                currentSize += txSize;
+            }
+
+            if (currentChunk.Count > 0)
+            {
+                AddBlock(currentChunk, cancellationToken);
             }
         }
 
