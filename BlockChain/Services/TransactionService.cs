@@ -10,14 +10,23 @@ namespace BlockChain.Services
 {
     public class TransactionService
     {
-        public Transaction CreateTransaction(string from, string to, decimal amount)
+        private readonly WalletService _walletService;
+        public TransactionService()
         {
-            var tx = new Transaction(from, to, amount);
+            _walletService = new WalletService();
+        }
+
+        public Transaction CreateTransaction(Wallet walletFrom, string to, decimal amount, byte[] senderPublicKey)
+        {
+            var tx = new Transaction(walletFrom.Address, to, amount, senderPublicKey);
+            tx.Signature = walletFrom.Sign(tx.GetDataToSign());
+
             var validation = ValidateTransaction(tx);
             if (!validation.IsValid)
             {
                 throw new ArgumentException(validation.ErrorMessage);
             }
+
             return tx;
         }
 
@@ -41,6 +50,11 @@ namespace BlockChain.Services
             if (transaction.Amount <= 0)
             {
                 return (false, "Amount must be greater than zero.");
+            }
+
+            bool isSignatureValid = _walletService.VerifySignature(transaction.From, transaction.GetDataToSign(), transaction.Signature);
+            if (!isSignatureValid) {
+                return (false, "Invalid wallet signature");
             }
 
             return (true, string.Empty);
