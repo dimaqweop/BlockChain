@@ -4,150 +4,19 @@ using System.Text;
 using BlockChain.Models;
 using BlockChain.Services;
 
-//var blockChain = new BlockChainService();
-//var displayService = new BlockChainDisplayService();
 
-//Console.WriteLine("Додаємо блоки до блокчейну...");
-//blockChain.AddBlock("Alice->Bob: 10", "Alice");
-//blockChain.AddBlock("Bob->Charlie: 5", "Bob");
-//blockChain.AddBlock("Charlie->David: 15", "Charlie");
-
-//displayService.PrintBlockChain(blockChain.Chain);
-//displayService.PrintValidationResult(blockChain.IsValid());
-
-//string hashToSeach = blockChain.Chain[2].Hash;
-
-//Block foundBlook = blockChain.FindBlockByHash(hashToSeach);
-
-//if (foundBlook != null)
-//{
-//    Console.WriteLine("Found! Data: ");
-//    displayService.PrintBlockChain(new List<Block> { foundBlook });
-//}
-//else
-//{
-//    Console.WriteLine("Error");
-//}
-
-//Block missingBlock = blockChain.FindBlockByHash("FAKE");
-
-//if (missingBlock == null)
-//{
-//    Console.WriteLine("Didn't found");
-//}
-//else
-//{
-//    Console.WriteLine("Error");
-//}
-
-//    //blockChain.Chain[1].Data = "Bob->Charlie: 999999"; 
-//    blockChain.Chain[2].Author = "Alex";
-//displayService.PrintValidationResult(blockChain.IsValid()); 
-
-// HW_1
-
-//Console.WriteLine("Adding blocks to chain: ");
-//blockChain.AddBlock("Transaction 1");
-//blockChain.AddBlock("Transaction 2");
-//blockChain.AddBlock("Transaction 3");
-//blockChain.AddBlock("Transaction 4");
-
-//displayService.PrintBlockChain(blockChain.Chain);
-
-//int initialCheck = blockChain.GetInvalidBlockIndex();
-//if (initialCheck == -1)
-//{
-//    Console.WriteLine("Starting validation: Chain fully valid");
-//}
-
-//blockChain.Chain[2].Data = "Hacker data";
-//int invalidIndex = blockChain.GetInvalidBlockIndex();
-
-//if (invalidIndex != -1)
-//{
-//    Console.WriteLine("Attention! An integrity violation has been detected. The counterfeit block is number 2.");
-//}
-//else
-//{
-//    Console.WriteLine("Chain valid");
-//}
-
-
-
-//string choice;
-
-//do
-//{
-//    Console.WriteLine("BlockChain Menu");
-//    Console.WriteLine("1. Add Block");
-//    Console.WriteLine("2. Validate Chain");
-//    Console.WriteLine("3. Print Chain");
-//    Console.WriteLine("0. Exit");
-//    Console.Write("Choice: ");
-
-
-//    choice = Console.ReadLine();
-
-//    switch (choice)
-//    {
-//        case "1":
-//            Console.WriteLine("Enter data for block: ");
-//            var data = Console.ReadLine();
-
-
-//            using (var cts = new CancellationTokenSource())
-//            {
-//                //var networkTask = Task.Run(async () =>
-//                //{
-//                //    int delay = new Random().Next(2000, 8000);
-//                //    await Task.Delay(delay);
-
-//                //    if (!cts.IsCancellationRequested)
-//                //    {
-//                //        Console.WriteLine($"\nAnother chain found a block rather than {delay} ms!");
-//                //        cts.Cancel();
-//                //    }
-//                //});
-
-//                try
-//                {
-//                    Console.WriteLine("Starting Mining...");
-
-//                    await blockChain.AddBlockAsync(data, cts.Token);
-//                    cts.Cancel();
-//                    Console.WriteLine("\nSuccess! Block has found!");
-//                }
-//                catch
-//                {
-//                    Console.WriteLine("\nRejected! Local mining rejected!");
-//                }
-//            }
-
-//            break;
-//        case "2":
-//            displayService.PrintValidationResult(blockChain.IsValid());
-//            break;
-//        case "3":
-//            displayService.PrintBlockChain(blockChain.Chain);
-//            break;
-//        default:
-//            Console.WriteLine("Incorrect choice; Select 1 or 2");
-//            break;
-//    }
-//}
-
-//while (choice != "0");
-
-
-
-
-
-// Lesson_4
+// Connecting services
 
 var displayService = new BlockChainDisplayService();
 var hashingService = new HashingService();
 var blockChainService = new BlockChainService();
 var transactionService = new TransactionService();
+var walletService = new WalletService();
+
+
+// Lesson_4
+
+
 
 //Console.WriteLine("Blockchain Menu");
 //Console.WriteLine("1. Add Block");
@@ -243,16 +112,6 @@ var transactionService = new TransactionService();
 
 // Task5
 
-var vanityService = new VanityWalletService();
-
-Console.WriteLine("Mining wallet with prefix 'aa'...");
-var result1 = vanityService.MineWallet("aa");
-
-Console.WriteLine($"[Success] Address: {result1.wallet.Address}");
-Console.WriteLine($"Attempts: {result1.attempts:N0}");
-
-Console.WriteLine("Mining wallet with prefix '777'...");
-var result2 = vanityService.MineWallet("777");
 //var pendingTransactions = new List<Transaction>
 //{
 //    new Transaction("Alice", "Bob", 10),
@@ -321,64 +180,79 @@ var result2 = vanityService.MineWallet("777");
 //blockChainService.AddBlock(new List<Transaction>(), CancellationToken.None);
 //blockChainService.AddBlock(new List<Transaction>(), CancellationToken.None);
 
-Console.WriteLine($"[Success] Address: {result2.wallet.Address}");
-Console.WriteLine($"Attempts: {result2.attempts:N0}");
-var mempool = new List<Transaction>();
-Console.WriteLine("Mining wallet with prefix 'abcd'...");
-var result3 = vanityService.MineWallet("abcd");
-Console.WriteLine("===== 15 Transactions =====");
-for (int i = 0; i < 15; i++)
-foreach (var block in blockChainService.Chain.ToList())
-{
-    string from = GenerateValidAddress();
-    string to = GenerateValidAddress();
-    var tx = transactionService.CreateTransaction(from, to, (i + 1) * 10);
-    displayService.PrintTransaction(tx);
-    mempool.Add(tx);
-}
 //Console.WriteLine($"Block: {block.Index} | Hash {block.Hash}");
 //Console.WriteLine($"Is chain valid? {blockChainService.IsValid()}");
 
-static string GenerateValidAddress()
-{
-    byte[] randomBytes = new byte[20];
-    using (var rng = System.Security.Cryptography.RandomNumberGenerator.Create())
-    {
-        rng.GetBytes(randomBytes);
-    }
-    return "0x" + Convert.ToHexString(randomBytes).ToLower();
-}
 
-Console.ForegroundColor = ConsoleColor.Yellow;
-Console.WriteLine("\n=== Creating transaction on address 'Bob' ===");
-var invalidTx = new Transaction(GenerateValidAddress(), "Bob", 20);
-mempool.Add(invalidTx);
-displayService.PrintTransaction(invalidTx);
-Console.ResetColor();
+// HW_4
 
-Console.WriteLine("=== Starting Processing ===");
-blockChainService.ProcessTransactions(mempool, CancellationToken.None);
+//static string GenerateValidAddress()
+//{
+//    byte[] randomBytes = new byte[20];
+//    using (var rng = System.Security.Cryptography.RandomNumberGenerator.Create())
+//    {
+//        rng.GetBytes(randomBytes);
+//    }
+//    return "0x" + Convert.ToHexString(randomBytes).ToLower();
+//}
 
-displayService.PrintBlockChain(blockChainService.Chain);
+//var mempool = new List<Transaction>();
+
+//Console.WriteLine("===== 15 Transactions =====");
+//for (int i = 0; i < 15; i++)
+//foreach (var block in blockChainService.Chain.ToList())
+//{
+//    string from = GenerateValidAddress();
+//    string to = GenerateValidAddress();
+//    var tx = transactionService.CreateTransaction(from, to, (i + 1) * 10);
+//    displayService.PrintTransaction(tx);
+//    mempool.Add(tx);
+//}
 
 
+//Console.ForegroundColor = ConsoleColor.Yellow;
+//Console.WriteLine("\n=== Creating transaction on address 'Bob' ===");
+//var invalidTx = new Transaction(GenerateValidAddress(), "Bob", 20);
+//mempool.Add(invalidTx);
+//displayService.PrintTransaction(invalidTx);
+//Console.ResetColor();
+
+//Console.WriteLine("=== Starting Processing ===");
+//blockChainService.ProcessTransactions(mempool, CancellationToken.None);
+
+//displayService.PrintBlockChain(blockChainService.Chain);
+
+
+
+// HW_5
 
 var vanityService = new VanityWalletService();
 
 Console.WriteLine("Mining wallet with prefix 'aa'...");
-var result1 = vanityService.MineWallet("aa");
+var (myWallet, myAttempts) = vanityService.MineWallet("aa");
 
-Console.WriteLine($"[Success] Address: {result1.wallet.Address}");
-Console.WriteLine($"Attempts: {result1.attempts:N0}");
+Console.WriteLine($"[Success] Address: {myWallet.Address}");
+Console.WriteLine($"Attempts: {myAttempts:N0}");
 
-Console.WriteLine("Mining wallet with prefix '777'...");
-var result2 = vanityService.MineWallet("777");
 
-Console.WriteLine($"[Success] Address: {result2.wallet.Address}");
-Console.WriteLine($"Attempts: {result2.attempts:N0}");
+string authMessage = "This is my custom wallet!";
 
-Console.WriteLine("Mining wallet with prefix 'abcd'...");
-var result3 = vanityService.MineWallet("abcd");
+byte[] mySignature = walletService.SignMessage(myWallet, authMessage);
+Console.WriteLine("My authentication:");
+bool isAuthSuccess = walletService.VerifyMessage(myWallet.Address, myWallet.PublicKey, authMessage, mySignature);
+if (isAuthSuccess)
+{
+    Console.WriteLine("Auth successful!");
+}
 
-Console.WriteLine($"[Success] Address: {result3.wallet.Address}");
-Console.WriteLine($"Attempts: {result3.attempts:N0}");
+Wallet hackerWallet = walletService.CreateWallet("Hacker");
+
+byte[] hackerSignature = walletService.SignMessage(hackerWallet, authMessage);
+Console.WriteLine("Hacker authentication:");
+bool isHackerAuthSuccess = walletService.VerifyMessage(myWallet.Address, hackerWallet.PublicKey, authMessage, hackerSignature);
+if (!isHackerAuthSuccess)
+{
+    Console.WriteLine("Hacker auth failed!");
+}
+
+

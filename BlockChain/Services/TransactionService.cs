@@ -37,14 +37,18 @@ namespace BlockChain.Services
                 return (false, "Transaction cannot be null.");
             }
 
-            if (!IsValidCryptoAddress(transaction.From))
+            //if (!IsValidCryptoAddress(transaction.From)) return (false, "Invalid Sender address. Must start with '0x', be 42 characters long, and contain only alphanumeric characters.");
+
+            //if (!IsValidCryptoAddress(transaction.To)) return (false, "Invalid Recipient address. Must start with '0x', be 42 characters long, and contain only alphanumeric characters.");
+
+            if (string.IsNullOrWhiteSpace(transaction.From))
             {
-                return (false, "Invalid Sender address. Must start with '0x', be 42 characters long, and contain only alphanumeric characters.");
+                return (false, "Sender cannot be empty.");
             }
 
-            if (!IsValidCryptoAddress(transaction.To))
+            if (string.IsNullOrWhiteSpace(transaction.To))
             {
-                return (false, "Invalid Recipient address. Must start with '0x', be 42 characters long, and contain only alphanumeric characters.");
+                return (false, "Recipient cannot be empty.");
             }
 
             if (transaction.Amount <= 0)
