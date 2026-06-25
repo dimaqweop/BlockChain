@@ -144,27 +144,9 @@ using BlockChain.Services;
 
 // Lesson_4
 
-var displayService = new BlockChainDisplayService();
-var hashingService = new HashingService();
-var blockChainService = new BlockChainService();
-var transactionService = new TransactionService(blockChainService.Chain);
 
-//Console.WriteLine("Blockchain Menu");
-//Console.WriteLine("1. Mine Block");
-//Console.WriteLine("2. Create Transaction");
-//Console.WriteLine("3. Show Alice Balance");
-//Console.WriteLine("4. Show Bob Balance");
-//Console.WriteLine("5. Validate Blockchain");
-//Console.WriteLine("6. Print Blockchain");
-//Console.WriteLine("7. Exit");
-//Console.WriteLine("8. Change Blockchain");
 
-var wallertService = new WalletService(blockChainService.Chain);
 
-var walletAlice = wallertService.CreateWallet("Alice");
-var walletBob = wallertService.CreateWallet("Bob");
-var walletCharlie = wallertService.CreateWallet("Charlie");
-var walletDave = wallertService.CreateWallet("Dave");
 
 
 //blockChainService.MineBlock(new List<Transaction>(), walletAlice.Address, CancellationToken.None);
@@ -176,68 +158,91 @@ var walletDave = wallertService.CreateWallet("Dave");
 
 //Console.WriteLine($"Alice balance: {wallertService.GetBalance(walletAlice.Address)}");
 
-decimal previousBalance = wallertService.GetBalance(walletAlice.Address);
-int blocksMined = 0;
-
-while (true)
-{
-    blockChainService.MineBlock(new List<Transaction>(), walletAlice.Address, CancellationToken.None);
-    blocksMined++;
-
-    decimal currentBalance = wallertService.GetBalance(walletAlice.Address);
-    decimal reward = currentBalance - previousBalance;
-
-    if (reward < 50)
-    {
-        Console.WriteLine($"\n[Block {blocksMined}] Limit reached! Remaining reward given: {reward}");
-        Console.WriteLine($"Alice's current balance: {currentBalance}");
-        break;
-    }
-
-    previousBalance = currentBalance;
-    Console.Write(".");
-}
-
-blockChainService.MineBlock(new List<Transaction>(), walletAlice.Address, CancellationToken.None);
-
-decimal finalBalance = wallertService.GetBalance(walletAlice.Address);
-Console.WriteLine($"Alice's final balance: {finalBalance}");
+//decimal previousBalance = wallertService.GetBalance(walletAlice.Address);
+//int blocksMined = 0;
 
 //while (true)
 //{
-//    var choice = Console.ReadLine();
+//    blockChainService.MineBlock(new List<Transaction>(), walletAlice.Address, CancellationToken.None);
+//    blocksMined++;
 
-//    switch (choice)
-//{
-//    case "1":
-//        blockChainService.MineBlock(new List<Transaction>(), walletAlice.Address, CancellationToken.None);
-//        Console.WriteLine("Blocks added successfuly");
-//        break;
-//    case "2":
-//        var transaction1 = transactionService.CreateTransaction(walletAlice, walletBob.Address, 10, walletBob.PublicKey);
-//        blockChainService.MineBlock(new List<Transaction> { transaction1 }, walletAlice.Address, CancellationToken.None);
-//        break;
-//    case "3":
-//        Console.WriteLine($"Alice balance: {wallertService.GetBalance(walletAlice.Address)}");
-//        break;
-//    case "4":
-//        Console.WriteLine($"Bob balance: {wallertService.GetBalance(walletBob.Address)}");
-//        break;
-//    case "5":
-//        Console.WriteLine("");
-//        break;
-//    case "6":
-//        displayService.PrintBlockChain(blockChainService.Chain);
-//        break;
-//    case "8":
-//        blockChainService.Chain[1].Transactions[0].Amount = 100;
-//        Console.WriteLine("Blockchain modified. Please validate");
-//        break;
+//    decimal currentBalance = wallertService.GetBalance(walletAlice.Address);
+//    decimal reward = currentBalance - previousBalance;
 
-//    case "7":
-//        return;
+//    if (reward < 50)
+//    {
+//        Console.WriteLine($"\n[Block {blocksMined}] Limit reached! Remaining reward given: {reward}");
+//        Console.WriteLine($"Alice's current balance: {currentBalance}");
+//        break;
+//    }
+
+//    previousBalance = currentBalance;
+//    Console.Write(".");
 //}
-//}
+
+//blockChainService.MineBlock(new List<Transaction>(), walletAlice.Address, CancellationToken.None);
+
+//decimal finalBalance = wallertService.GetBalance(walletAlice.Address);
+//Console.WriteLine($"Alice's final balance: {finalBalance}");
+
+
+Console.WriteLine("Blockchain Menu");
+Console.WriteLine("1. Mine Block");
+Console.WriteLine("2. Create Transaction");
+Console.WriteLine("3. Show Alice Balance");
+Console.WriteLine("4. Show Bob Balance");
+Console.WriteLine("5. Validate Blockchain");
+Console.WriteLine("6. Print Blockchain");
+Console.WriteLine("7. Exit");
+Console.WriteLine("8. Change Blockchain");
+
+var displayService = new BlockChainDisplayService();
+var hashingService = new HashingService();
+var blockChainService = new BlockChainService();
+var transactionService = new TransactionService(blockChainService.Chain);
+
+var walletService = new WalletService(blockChainService.Chain);
+
+var walletAlice = walletService.CreateWallet("Alice");
+var walletBob = walletService.CreateWallet("Bob");
+var walletCharlie = walletService.CreateWallet("Charlie");
+var walletDave = walletService.CreateWallet("Dave");
+
+while (true)
+{
+    var choice = Console.ReadLine();
+
+    switch (choice)
+    {
+        case "1":
+            blockChainService.MineBlock(walletAlice.Address, CancellationToken.None);
+            Console.WriteLine("Blocks added successfuly");
+            break;
+        case "2":
+            var transaction1 = transactionService.CreateTransaction(walletAlice, walletBob.Address, 10, walletBob.PublicKey);
+            blockChainService.AddTransactionToMempool(transaction1);
+            break;
+        case "3":
+            Console.WriteLine($"Alice balance: {walletService.GetBalance(walletAlice.Address)}");
+            break;
+        case "4":
+            Console.WriteLine($"Bob balance: {walletService.GetBalance(walletBob.Address)}");
+            break;
+        case "5":
+            Console.WriteLine("");
+            break;
+        case "6":
+            displayService.PrintBlockChain(blockChainService.Chain);
+            break;
+        case "8":
+            blockChainService.Chain[1].Transactions[0].Amount = 100;
+            Console.WriteLine("Blockchain modified. Please validate");
+            break;
+
+        case "7":
+            return;
+    }
+}
 
 
 // Task4

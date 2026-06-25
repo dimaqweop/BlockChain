@@ -16,8 +16,12 @@ namespace BlockChain.Models
         public decimal Amount { get; set; }
         public DateTime TimeStamp { get; set; }
 
+        public decimal Fee { get; set; } 
+
+
         public byte[] SenderPublicKey { get; set; }
         public byte[] Signature { get; set; }
+
 
 
         public string ToRowString()
@@ -27,12 +31,12 @@ namespace BlockChain.Models
                 return $"{Id} | {From} -> {To} | Amount: {Amount} | Time: {TimeStamp.ToString("O")} {Convert.ToHexString(Signature)}";
             }
 
-            return $"{Id} | {From} -> {To} | Amount: {Amount} | Time: {TimeStamp.ToString("O")}";
+            return $"{Id} | {From} -> {To} | Amount: {Amount} | Time: {TimeStamp.ToString("O")} | Fee: {Fee}";
         }
 
         public byte[] GetDataToSign()
         {
-            string row = $"{Id}{From}{To}{Amount}{TimeStamp.ToString("O")}";
+            string row = $"{Id}{From}{To}{Amount}{TimeStamp.ToString("O")}{Fee}";
             return Encoding.UTF8.GetBytes(row);
         }
 

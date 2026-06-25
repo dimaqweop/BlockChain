@@ -39,7 +39,7 @@ namespace BlockChain.Services
                 {
                     if (transaction.From == address)
                     {
-                        balance -= transaction.Amount;
+                        balance -= transaction.Amount + transaction.Fee;
                     }
                     if (transaction.To == address)
                     {

@@ -9,14 +9,14 @@ namespace BlockChain.Services
 {
     public class BlockChainDisplayService
     {
-        public void PrintBlockChain(List<Models.Block> chain)
+        public void PrintBlockChain(List<Block> chain)
         {
             foreach (var block in chain)
             {
                 Console.WriteLine($"Index: {block.Index}");
                 Console.WriteLine($"TimeStamp: {block.TimeStamp}");
                 Console.WriteLine($"PreviousHash: {block.PreviousHash}");
-                Console.WriteLine($"Hash: {block.Hash}");
+                Console.WriteLine($"Hash: {block.Hash:10}");
                 //Console.WriteLine($"Author: {block.Author}");
                 Console.WriteLine($"Nonce: {block.Nonce}");
                 Console.WriteLine(new string('-', 50));
@@ -31,8 +31,8 @@ namespace BlockChain.Services
         public void PrintTransaction(Transaction transaction)
         {
             Console.WriteLine($"Id: {transaction.Id}");
-            Console.WriteLine($"From: {transaction.From}");
-            Console.WriteLine($"To: {transaction.To}");
+            Console.WriteLine($"From: {transaction.From:10}");
+            Console.WriteLine($"To: {transaction.To:10}");
             Console.WriteLine($"Amount: {transaction.Amount}");
             Console.WriteLine($"TimeStamp: {transaction.TimeStamp}");
             Console.WriteLine(new string('-', 50));
