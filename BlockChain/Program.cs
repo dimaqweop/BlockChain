@@ -185,6 +185,14 @@ using BlockChain.Services;
 //decimal finalBalance = wallertService.GetBalance(walletAlice.Address);
 //Console.WriteLine($"Alice's final balance: {finalBalance}");
 
+var displayService = new BlockChainDisplayService();
+var hashingService = new HashingService();
+var blockChainService = new BlockChainService();
+var transactionService = new TransactionService(blockChainService.Chain);
+
+Console.WriteLine("================================");
+displayService.PrintValidationResult(blockChainService.IsValid());
+Console.WriteLine("================================");
 
 Console.WriteLine("Blockchain Menu");
 Console.WriteLine("1. Mine Block");
@@ -196,10 +204,7 @@ Console.WriteLine("6. Print Blockchain");
 Console.WriteLine("7. Exit");
 Console.WriteLine("8. Change Blockchain");
 
-var displayService = new BlockChainDisplayService();
-var hashingService = new HashingService();
-var blockChainService = new BlockChainService();
-var transactionService = new TransactionService(blockChainService.Chain);
+
 
 var walletService = new WalletService(blockChainService.Chain);
 
@@ -207,6 +212,7 @@ var walletAlice = walletService.CreateWallet("Alice");
 var walletBob = walletService.CreateWallet("Bob");
 var walletCharlie = walletService.CreateWallet("Charlie");
 var walletDave = walletService.CreateWallet("Dave");
+
 
 while (true)
 {
@@ -229,7 +235,7 @@ while (true)
             Console.WriteLine($"Bob balance: {walletService.GetBalance(walletBob.Address)}");
             break;
         case "5":
-            Console.WriteLine("");
+            displayService.PrintValidationResult(blockChainService.IsValid());
             break;
         case "6":
             displayService.PrintBlockChain(blockChainService.Chain);

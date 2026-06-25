@@ -9,13 +9,13 @@ namespace BlockChain.Services
 {
     public class BlockChainService
     {
-        public List<Block> Chain { get; set; }
-        public List<Transaction> PendingTransactions { get; set; } = new List<Transaction>();
-
         private readonly HashingService _hashingService;
         private readonly MiningService _miningService;
         private readonly TransactionService _transactionService;
         private readonly WalletService _walletService;
+        private readonly FileStorageService _fileStorageService;
+        public List<Block> Chain { get; set; }
+        public List<Transaction> PendingTransactions { get; set; } = new List<Transaction>();
         public int Difficulty { get; private set; }
 
         private readonly double _targetBlockTime = 20;
@@ -31,13 +31,29 @@ namespace BlockChain.Services
 
         public BlockChainService()
         {
+
             Chain = new List<Block>();
+            
             _hashingService = new HashingService();
             _transactionService = new TransactionService(Chain);
             _miningService = new MiningService(_hashingService);
             _walletService = new WalletService(Chain);
+
             Difficulty = 1;
-            CreateGenesisBlock();
+
+            _fileStorageService = new FileStorageService();
+            var loadedChain = _fileStorageService.LoadBlockChain();
+            if (loadedChain != null && loadedChain.Count > 0)
+            {
+                Chain = loadedChain;
+                _transactionService = new TransactionService(Chain);
+                _walletService = new WalletService(Chain);
+            }
+            else
+            {
+                CreateGenesisBlock();
+                _fileStorageService.SaveBlockChain(Chain);
+            }
         }
 
         private void CreateGenesisBlock()
@@ -122,6 +138,8 @@ namespace BlockChain.Services
 
             _miningService.MineBlock(block: newBlock, difficult: Difficulty, cancellationToken).GetAwaiter().GetResult();
             Chain.Add(newBlock);
+
+            _fileStorageService.SaveBlockChain(Chain);
 
             foreach (var tx in transactionsToRemoveFromPool)
             {
@@ -221,6 +239,20 @@ namespace BlockChain.Services
                 double allowedTolerance = 2;
 
                 if (currentBlock.MiningDuration > (physicalTimeDifference + allowedTolerance)) return false;
+
+                foreach (var tx in currentBlock.Transactions)
+                {
+                    if (tx.From != "COINBASE")
+                    {
+                        bool isSignatureValid = _walletService.VerifySignature(tx.From, tx.GetDataToSign(), tx.Signature);
+
+                        if (!isSignatureValid)
+                        {
+                            Console.WriteLine($"[CRITICAL THREAT]: A fraudulent transaction has been detected in block {currentBlock.Index}!");
+                            return false; 
+                        }
+                    }
+                }
             }
 
             return true;
