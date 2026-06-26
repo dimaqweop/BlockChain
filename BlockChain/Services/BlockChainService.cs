@@ -79,13 +79,11 @@ namespace BlockChain.Services
                         tempBalances[transaction.From] = _walletService.GetBalance(transaction.From);
                     }
 
-                    decimal totalCost = transaction.Amount + transaction.Fee; 
+                    decimal totalCost = transaction.Amount + transaction.Fee;
 
                     if (tempBalances[transaction.From] < totalCost)
                     {
-                        Console.WriteLine("Double spend detected");
-                        transactionsToRemoveFromPool.Add(transaction);
-                        continue;
+                        throw new InvalidOperationException($"Double spend detected! Temp balance for {transaction.From} is lower than transfer sum.");
                     }
 
                     tempBalances[transaction.From] -= transaction.Amount;
@@ -117,7 +115,7 @@ namespace BlockChain.Services
 
                 var rewardTransaction = new Transaction("COINBASE", minerAddress, totalReward, new byte[0]);
                 acceptedTransactions.Add(rewardTransaction);
-                TotalMinted += _rewardAmount;
+                TotalMinted += actualReward;
             }
 
             newBlock.Transactions = acceptedTransactions;
@@ -138,66 +136,37 @@ namespace BlockChain.Services
 
         public void ProcessTransactions(List<Transaction> incomingTransactions, CancellationToken cancellationToken)
         {
-            var currentChunk = new List<Transaction>();
-            int currentSize = 0;
-
             foreach (var tx in incomingTransactions)
             {
-                var (isValid, errorMessage) = _transactionService.ValidateTransaction(tx);
-
-                if (!isValid)
+                try
                 {
-                    Console.WriteLine($"Rejected: {errorMessage} (To: {tx.To})");
-                    continue;
+                    AddTransactionToMempool(tx);
                 }
-
-                int txSize = Encoding.UTF8.GetByteCount(tx.ToRowString());
-
-                if (txSize > MaxBlockSizeBytes)
+                catch (InvalidOperationException ex)
                 {
-                    continue;
+                    Console.WriteLine($"Rejected: {ex.Message} (To: {tx.To})");
                 }
-
-                if (currentSize + txSize > MaxBlockSizeBytes)
-                {
-                    AddBlock(currentChunk, cancellationToken);
-
-                    currentChunk = new List<Transaction>();
-                    currentSize = 0;
-                }
-
-                currentChunk.Add(tx);
-                currentSize += txSize;
-            }
-
-            if (currentChunk.Count > 0)
-            {
-                AddBlock(currentChunk, cancellationToken);
             }
         }
 
         public bool ValidateEconomy()
         {
-            var balances = new Dictionary<string, decimal>();
+            var uniqueAddresses = new HashSet<string>();
 
             foreach (var block in Chain)
             {
                 foreach (var transaction in block.Transactions)
                 {
-                    if (transaction.From != "COINBASE")
-                    {
-                        if (!balances.ContainsKey(transaction.From)) balances[transaction.From] = 0;
-                        balances[transaction.From] -= transaction.Amount;
-                    }
-
-                    if (transaction.To != "COINBASE")
-                    {
-                        if (!balances.ContainsKey(transaction.To)) balances[transaction.To] = 0;
-                        balances[transaction.To] += transaction.Amount;
-                    }
+                    if (transaction.From != "COINBASE") uniqueAddresses.Add(transaction.From);
+                    if (transaction.To != "COINBASE") uniqueAddresses.Add(transaction.To);
                 }
             }
-            decimal totalUsersBalance = balances.Values.Sum();
+
+            decimal totalUsersBalance = 0;
+            foreach (var address in uniqueAddresses)
+            {
+                totalUsersBalance += _walletService.GetBalance(address);
+            }
 
             return totalUsersBalance == TotalMinted;
         }
@@ -277,12 +246,29 @@ namespace BlockChain.Services
                 throw new InvalidOperationException($"Invalid transaction: {validationResult.ErrorMessage}");
             }
 
+            var duplicateTransaction = PendingTransactions.FirstOrDefault(t => t.From == transaction.From && t.To == transaction.To && t.Amount == transaction.Amount);
+
+            if (duplicateTransaction != null)
+            {
+                if (transaction.Fee > duplicateTransaction.Fee)
+                {
+                    PendingTransactions.Remove(duplicateTransaction);
+                    PendingTransactions.Add(transaction);
+                    Console.WriteLine($"[RBF SUCCESS] Transaction accelerated! Old Fee: {duplicateTransaction.Fee}, New Fee: {transaction.Fee}");
+                    return;
+                }
+                else
+                {
+                    throw new InvalidOperationException("RBF Failed: New fee must be higher than the existing transaction fee.");
+                }
+            }
+
             if (transaction.From != "COINBASE")
             {
-                decimal senderBalance = _walletService.GetBalance(transaction.From);
-                if (senderBalance < transaction.Amount + transaction.Fee)
+                decimal pendingBalance = GetPendingBalance(transaction.From);
+                if (pendingBalance < transaction.Amount + transaction.Fee)
                 {
-                    throw new InvalidOperationException($"Insufficient balance for the transaction");
+                    throw new InvalidOperationException("Insufficient pending balance for the transaction");
                 }
             }
 
@@ -305,6 +291,14 @@ namespace BlockChain.Services
                     throw new InvalidOperationException("Mempool is full. Fee is too low.");
                 }
             }
+        }
+
+        public decimal GetPendingBalance(string address)
+        {
+            decimal realBalance = _walletService.GetBalance(address);
+
+            decimal pendingSpent = PendingTransactions.Where(t => t.From == address).Sum(t => t.Amount + t.Fee);
+            return realBalance - pendingSpent;
         }
     }
 }

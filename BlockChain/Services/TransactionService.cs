@@ -70,7 +70,11 @@ namespace BlockChain.Services
                 return (true, string.Empty);
             }
 
-            bool isSignatureValid = _walletService.VerifySignature(transaction.From, transaction.GetDataToSign(), transaction.Signature);
+            bool isSignatureValid = _walletService.VerifySignature(
+                Convert.ToBase64String(transaction.SenderPublicKey), 
+                transaction.GetDataToSign(),
+                transaction.Signature
+            );
             if (!isSignatureValid) {
                 return (false, "Invalid wallet signature");
             }
