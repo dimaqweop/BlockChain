@@ -26,6 +26,7 @@ namespace BlockChain.Services
         public decimal TotalMinted { get; private set; } = 0;
 
         private readonly int maxTransactionAmount = 2;
+        private readonly int _halvingInterval = 2;
 
         public int MaxMempoolSize { get; } = 5;
 
@@ -126,7 +127,7 @@ namespace BlockChain.Services
 
             if (remainingSupply > 0)
             {
-                decimal actualReward = Math.Min(_rewardAmount, remainingSupply);
+                decimal actualReward = Math.Min(GetMinerReward(), remainingSupply);
                 var totalReward = acceptedTransactions.Sum(t => t.Fee) + actualReward;
 
                 var rewardTransaction = new Transaction("COINBASE", minerAddress, totalReward, new byte[0]);
@@ -294,6 +295,13 @@ namespace BlockChain.Services
                     throw new InvalidOperationException("Mempool is full. Fee is too low.");
                 }
             }
+        }
+
+        // Halving
+        private decimal GetMinerReward()
+        {
+            int halvingCount = Chain.Count / _halvingInterval;
+            return _rewardAmount / (decimal)Math.Pow(2, halvingCount);
         }
     }
 }
