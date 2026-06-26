@@ -6,6 +6,12 @@ namespace BlockChain.Services
 {
     public class WalletService
     {
+        public List<Block> blockChain;
+
+        public WalletService(List<Block> blockChain) { 
+            this.blockChain = blockChain;
+        }
+
         public Wallet CreateWallet(string name)
         {
             using var ecdsa = ECDsa.Create();
@@ -26,6 +32,25 @@ namespace BlockChain.Services
             return ecdsa.VerifyData(data, signature, HashAlgorithmName.SHA256);
         }
 
+        public decimal GetBalance(string address)
+        {
+            decimal balance = 0;
+            foreach (var block in blockChain)
+            {
+                foreach (var transaction in block.Transactions)
+                {
+                    if (transaction.From == address)
+                    {
+                        balance -= transaction.Amount + transaction.Fee;
+                    }
+                    if (transaction.To == address)
+                    {
+                        balance += transaction.Amount;
+                    }
+                }
+            }
+            return balance;
+        }
         public byte[] SignMessage(Wallet wallet, string message)
         {
             byte[] dataToSign = Encoding.UTF8.GetBytes(message);

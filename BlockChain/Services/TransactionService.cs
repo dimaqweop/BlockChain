@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection.Metadata.Ecma335;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
@@ -11,13 +12,21 @@ namespace BlockChain.Services
     public class TransactionService
     {
         private readonly WalletService _walletService;
-        public TransactionService()
+        public TransactionService(List<Block> blockChain)
         {
-            _walletService = new WalletService();
+            _walletService = new WalletService(blockChain);
         }
 
         public Transaction CreateTransaction(Wallet walletFrom, string to, decimal amount, byte[] senderPublicKey)
         {
+            // Перевірка балансу
+            var balance = _walletService.GetBalance(walletFrom.Address);
+            if (balance < amount)
+            {
+                throw new ArgumentException("Insufficient funds.");
+            }
+
+
             var tx = new Transaction(walletFrom.Address, to, amount, senderPublicKey);
             tx.Signature = walletFrom.Sign(tx.GetDataToSign());
 
@@ -54,6 +63,11 @@ namespace BlockChain.Services
             if (transaction.Amount <= 0)
             {
                 return (false, "Amount must be greater than zero.");
+            }
+
+            if (transaction.From == "COINBASE")
+            {
+                return (true, string.Empty);
             }
 
             bool isSignatureValid = _walletService.VerifySignature(transaction.From, transaction.GetDataToSign(), transaction.Signature);

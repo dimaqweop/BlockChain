@@ -10,25 +10,36 @@ namespace BlockChain.Services
     public class BlockChainService
     {
         public List<Block> Chain { get; set; }
+        public List<Transaction> PendingTransactions { get; set; } = new List<Transaction>();
 
         private readonly HashingService _hashingService;
         private readonly MiningService _miningService;
         private readonly TransactionService _transactionService;
+        private readonly WalletService _walletService;
         public int Difficulty { get; private set; }
 
         private readonly double _targetBlockTime = 20;
         private readonly int _adjustmentInterval = 10;
 
+        private readonly decimal _rewardAmount = 50;
+        public decimal MaxSupply { get; } = 1000;
+        public decimal TotalMinted { get; private set; } = 0;
+
+        private readonly int maxTransactionAmount = 2;
+
+        public int MaxMempoolSize { get; } = 5;
+
         public int MaxBlockSizeBytes { get; } = 256;
 
         public BlockChainService()
         {
-            Chain = new List<Block>(); 
+            Chain = new List<Block>();
             _hashingService = new HashingService();
-            _transactionService = new TransactionService();
+            _transactionService = new TransactionService(Chain);
             _miningService = new MiningService(_hashingService);
+            _walletService = new WalletService(Chain);
             Difficulty = 1;
-            CreateGenesisBlock(); 
+            CreateGenesisBlock();
         }
 
         private void CreateGenesisBlock()
@@ -40,7 +51,7 @@ namespace BlockChain.Services
             Chain.Add(genesisBlock);
         }
 
-        public void AddBlock(List<Transaction> transactions, CancellationToken cancellationToken)
+        public void MineBlock(string minerAddress, CancellationToken cancellationToken)
         {
             var lastBlock = Chain.Last();
             var newBlock = new Block(lastBlock.Index + 1, DateTime.UtcNow, new List<Transaction>(), lastBlock.Hash, Difficulty);
@@ -48,27 +59,76 @@ namespace BlockChain.Services
             var acceptedTransactions = new List<Transaction>();
             int currentBlockSizeBytes = 0;
 
-            foreach (var transaction in transactions)
+            var tempBalances = new Dictionary<string, decimal>();
+
+            var transactionsToRemoveFromPool = new List<Transaction>();
+
+            var transactionsToProcess = PendingTransactions.OrderByDescending(t => t.Fee).ToList();
+
+            foreach (var transaction in transactionsToProcess)
             {
                 if (!_transactionService.ValidateTransaction(transaction).IsValid)
                 {
                     throw new InvalidOperationException($"Invalid transaction: {transaction.Id}");
                 }
 
+                if (transaction.From != "COINBASE")
+                {
+                    if (!tempBalances.ContainsKey(transaction.From))
+                    {
+                        tempBalances[transaction.From] = _walletService.GetBalance(transaction.From);
+                    }
+
+                    decimal totalCost = transaction.Amount + transaction.Fee; 
+
+                    if (tempBalances[transaction.From] < totalCost)
+                    {
+                        Console.WriteLine("Double spend detected");
+                        transactionsToRemoveFromPool.Add(transaction);
+                        continue;
+                    }
+
+                    tempBalances[transaction.From] -= transaction.Amount;
+                }
+
                 int transactionBytes = Encoding.UTF8.GetByteCount(transaction.ToRowString());
 
                 if (currentBlockSizeBytes + transactionBytes > newBlock.MaxBlockSizeBytes)
                 {
-                    break; 
+                    break;
                 }
+
+                if (acceptedTransactions.Count >= maxTransactionAmount)
+                {
+                    break;
+                }
+
                 acceptedTransactions.Add(transaction);
+                transactionsToRemoveFromPool.Add(transaction);
                 currentBlockSizeBytes += transactionBytes;
+            }
+
+            decimal remainingSupply = MaxSupply - TotalMinted;
+
+            if (remainingSupply > 0)
+            {
+                decimal actualReward = Math.Min(_rewardAmount, remainingSupply);
+                var totalReward = acceptedTransactions.Sum(t => t.Fee) + actualReward;
+
+                var rewardTransaction = new Transaction("COINBASE", minerAddress, totalReward, new byte[0]);
+                acceptedTransactions.Add(rewardTransaction);
+                TotalMinted += _rewardAmount;
             }
 
             newBlock.Transactions = acceptedTransactions;
 
             _miningService.MineBlock(block: newBlock, difficult: Difficulty, cancellationToken).GetAwaiter().GetResult();
             Chain.Add(newBlock);
+
+            foreach (var tx in transactionsToRemoveFromPool)
+            {
+                PendingTransactions.Remove(tx);
+            }
 
             if (newBlock.Index % _adjustmentInterval == 0)
             {
@@ -114,6 +174,32 @@ namespace BlockChain.Services
             {
                 AddBlock(currentChunk, cancellationToken);
             }
+        }
+
+        public bool ValidateEconomy()
+        {
+            var balances = new Dictionary<string, decimal>();
+
+            foreach (var block in Chain)
+            {
+                foreach (var transaction in block.Transactions)
+                {
+                    if (transaction.From != "COINBASE")
+                    {
+                        if (!balances.ContainsKey(transaction.From)) balances[transaction.From] = 0;
+                        balances[transaction.From] -= transaction.Amount;
+                    }
+
+                    if (transaction.To != "COINBASE")
+                    {
+                        if (!balances.ContainsKey(transaction.To)) balances[transaction.To] = 0;
+                        balances[transaction.To] += transaction.Amount;
+                    }
+                }
+            }
+            decimal totalUsersBalance = balances.Values.Sum();
+
+            return totalUsersBalance == TotalMinted;
         }
 
         private void AdjustDifficulty()
@@ -181,6 +267,44 @@ namespace BlockChain.Services
             }
 
             return true;
+        }
+
+        public void AddTransactionToMempool(Transaction transaction)
+        {
+            var validationResult = _transactionService.ValidateTransaction(transaction);
+            if (!validationResult.IsValid)
+            {
+                throw new InvalidOperationException($"Invalid transaction: {validationResult.ErrorMessage}");
+            }
+
+            if (transaction.From != "COINBASE")
+            {
+                decimal senderBalance = _walletService.GetBalance(transaction.From);
+                if (senderBalance < transaction.Amount + transaction.Fee)
+                {
+                    throw new InvalidOperationException($"Insufficient balance for the transaction");
+                }
+            }
+
+            if (PendingTransactions.Count < MaxMempoolSize)
+            {
+                PendingTransactions.Add(transaction);
+            }
+            else
+            {
+                var lowestFeeTransaction = PendingTransactions.OrderBy(t => t.Fee).First();
+
+                if (transaction.Fee > lowestFeeTransaction.Fee)
+                {
+                    PendingTransactions.Remove(lowestFeeTransaction);
+                    PendingTransactions.Add(transaction);
+                    Console.WriteLine($"Transaction {lowestFeeTransaction.Id} dropped from mempool. Replaced by higher fee transaction.");
+                }
+                else
+                {
+                    throw new InvalidOperationException("Mempool is full. Fee is too low.");
+                }
+            }
         }
     }
 }

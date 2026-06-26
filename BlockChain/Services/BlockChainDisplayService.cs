@@ -9,7 +9,7 @@ namespace BlockChain.Services
 {
     public class BlockChainDisplayService
     {
-        public void PrintBlockChain(List<Models.Block> chain)
+        public void PrintBlockChain(List<Block> chain)
         {
             Console.WriteLine("\n" + new string('=', 70));
             Console.WriteLine(new string('=', 70));
