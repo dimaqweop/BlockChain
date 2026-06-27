@@ -22,7 +22,7 @@ namespace BlockChain.Models
         public byte[] SenderPublicKey { get; set; }
         public byte[] Signature { get; set; }
 
-
+        public Transaction() { }
 
         public string ToRowString()
         {
