@@ -61,25 +61,23 @@ namespace BlockChain.Services
 
         private void CreateGenesisBlock()
         {
-            var genesisBlock = new Block(0, DateTime.UtcNow, new List<Transaction>(), "0", Difficulty);
+            var genesisBlock = new Block(0, DateTime.Parse("01.01.2026"), new List<Transaction>(), "0", Difficulty);
             genesisBlock.MiningDuration = 0;
-            _miningService.MineBlock(genesisBlock, Difficulty, CancellationToken.None).GetAwaiter().GetResult();
-
+            //_miningService.MineBlock(genesisBlock, Difficulty, CancellationToken.None).GetAwaiter().GetResult();
+            genesisBlock.Nonce = 44;
+            genesisBlock.Hash = _hashingService.ComputeHash(genesisBlock);
             Chain.Add(genesisBlock);
         }
 
-        public void MineBlock(string minerAddress, CancellationToken cancellationToken)
+        public Block MineBlock(string minerAddress, CancellationToken cancellationToken)
         {
             var lastBlock = Chain.Last();
             var newBlock = new Block(lastBlock.Index + 1, DateTime.UtcNow, new List<Transaction>(), lastBlock.Hash, Difficulty);
 
             var acceptedTransactions = new List<Transaction>();
             int currentBlockSizeBytes = 0;
-
             var tempBalances = new Dictionary<string, decimal>();
-
             var transactionsToRemoveFromPool = new List<Transaction>();
-
             var transactionsToProcess = PendingTransactions.OrderByDescending(t => t.Fee).ToList();
 
             foreach (var transaction in transactionsToProcess)
@@ -141,6 +139,7 @@ namespace BlockChain.Services
             Chain.Add(newBlock);
 
             _fileStorageService.SaveBlockChain(Chain);
+            //_tcpP2PService.BroadcastNewBlock(newBlock);
 
             foreach (var tx in transactionsToRemoveFromPool)
             {
@@ -151,6 +150,8 @@ namespace BlockChain.Services
             {
                 AdjustDifficulty();
             }
+
+            return newBlock;
         }
 
         public void ProcessTransactions(List<Transaction> incomingTransactions, CancellationToken cancellationToken)

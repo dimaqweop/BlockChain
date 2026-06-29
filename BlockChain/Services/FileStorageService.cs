@@ -31,7 +31,7 @@ namespace BlockChain.Services
 
         public List<Block> LoadBlockChain()
         {
-            
+
             if (!File.Exists(_blockChainFilePath))
             {
                 return null;
@@ -81,6 +81,18 @@ namespace BlockChain.Services
             }
             string json = File.ReadAllText(_walletsFilePath);
             return JsonSerializer.Deserialize<List<Wallet>>(json, _jsonOptions) ?? new List<Wallet>();
+        }
+
+        public void ClearBlockChain()
+        {
+            if (File.Exists(_blockChainFilePath))
+            {
+                File.Delete(_blockChainFilePath);
+            }
+            if (File.Exists(_blockChainBackupFilePath))
+            {
+                File.Delete(_blockChainBackupFilePath);
+            }
         }
     }
 }
