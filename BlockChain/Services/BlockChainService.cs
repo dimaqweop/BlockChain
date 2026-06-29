@@ -70,6 +70,14 @@ namespace BlockChain.Services
 
         public void MineBlock(string minerAddress, CancellationToken cancellationToken)
         {
+            decimal currentReward = GetCurrentReward();
+            decimal totalPendingFees = PendingTransactions.Sum(t => t.Fee);
+
+            if (currentReward == 0m && totalPendingFees == 0m)
+            {
+                throw new InvalidOperationException("Mining has been canceled: the block is unprofitable (no reward or fees).");
+            }
+
             var lastBlock = Chain.Last();
             var newBlock = new Block(lastBlock.Index + 1, DateTime.UtcNow, new List<Transaction>(), lastBlock.Hash, Difficulty);
 
@@ -123,16 +131,24 @@ namespace BlockChain.Services
                 currentBlockSizeBytes += transactionBytes;
             }
 
-            decimal remainingSupply = MaxSupply - TotalMinted;
+            decimal remainedSupply = MaxSupply - TotalMinted;
+            decimal actualReward = 0;
 
-            if (remainingSupply > 0)
+            if (remainedSupply > 0)
             {
-                decimal actualReward = Math.Min(GetMinerReward(), remainingSupply);
-                var totalReward = acceptedTransactions.Sum(t => t.Fee) + actualReward;
-
-                var rewardTransaction = new Transaction("COINBASE", minerAddress, totalReward, new byte[0]);
-                acceptedTransactions.Add(rewardTransaction);
+                actualReward = Math.Min(currentReward, remainedSupply);
                 TotalMinted += actualReward;
+            }
+
+            decimal totalBlockFees = acceptedTransactions.Sum(tx => tx.Fee);
+
+            decimal minerFeeReward = totalBlockFees * 0.5m;
+            decimal totalMinerReward = actualReward + minerFeeReward;
+
+            if (totalMinerReward > 0)
+            {
+                var coinbaseTransaction = new Transaction("COINBASE", minerAddress, totalMinerReward, new byte[0]);
+                acceptedTransactions.Add(coinbaseTransaction);
             }
 
             newBlock.Transactions = acceptedTransactions;
@@ -335,10 +351,19 @@ namespace BlockChain.Services
         }
 
         // Halving
-        private decimal GetMinerReward()
+        public decimal GetCurrentReward()
         {
-            int halvingCount = Chain.Count / _halvingInterval;
-            return _rewardAmount / (decimal)Math.Pow(2, halvingCount);
+            int halvingInterval = 3;
+            int halvingCount = Chain.Count / halvingInterval;
+
+            decimal reward = _rewardAmount / (decimal)Math.Pow(2, halvingCount);
+
+            if (reward < 1m)
+            {
+                return 0m;
+            }
+
+            return reward;
         }
     }
 }

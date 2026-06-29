@@ -122,84 +122,146 @@ var walletService = new WalletService(blockChainService.Chain);
 
 // HW_7
 
-var spammer = walletService.CreateWallet("Spammer");
-var alice = walletService.CreateWallet("Alice");
-var bob = walletService.CreateWallet("Bob");
-var charlie = walletService.CreateWallet("Charlie");
-var dave = walletService.CreateWallet("Dave");
+//var spammer = walletService.CreateWallet("Spammer");
+//var alice = walletService.CreateWallet("Alice");
+//var bob = walletService.CreateWallet("Bob");
+//var charlie = walletService.CreateWallet("Charlie");
+//var dave = walletService.CreateWallet("Dave");
 
-for (int i = 0; i < 5; i++) blockChainService.MineBlock(spammer.Address, CancellationToken.None);
-for (int i = 0; i < 2; i++) blockChainService.MineBlock(alice.Address, CancellationToken.None);
+//for (int i = 0; i < 5; i++) blockChainService.MineBlock(spammer.Address, CancellationToken.None);
+//for (int i = 0; i < 2; i++) blockChainService.MineBlock(alice.Address, CancellationToken.None);
 
-blockChainService.MineBlock(charlie.Address, CancellationToken.None);
-var setupTx = transactionService.CreateTransaction(charlie, dave.Address, 10, charlie.PublicKey);
-blockChainService.AddTransactionToMempool(setupTx);
-blockChainService.MineBlock(dave.Address, CancellationToken.None);
-blockChainService.PendingTransactions.Clear();
+//blockChainService.MineBlock(charlie.Address, CancellationToken.None);
+//var setupTx = transactionService.CreateTransaction(charlie, dave.Address, 10, charlie.PublicKey);
+//blockChainService.AddTransactionToMempool(setupTx);
+//blockChainService.MineBlock(dave.Address, CancellationToken.None);
+//blockChainService.PendingTransactions.Clear();
 
-Console.WriteLine("\n=== 1. Spam Attack Test ===");
-int successfulSpamCount = 0;
-for (int i = 0; i < 10; i++)
+//Console.WriteLine("\n=== 1. Spam Attack Test ===");
+//int successfulSpamCount = 0;
+//for (int i = 0; i < 10; i++)
+//{
+//    try
+//    {
+//        var tx = transactionService.CreateTransaction(spammer, bob.Address, 1 + i, spammer.PublicKey);
+//        tx.Fee = 0;
+//        tx.Signature = spammer.Sign(tx.GetDataToSign());
+
+//        blockChainService.AddTransactionToMempool(tx);
+//        successfulSpamCount++;
+//    }
+//    catch (InvalidOperationException) { }
+//}
+//Console.WriteLine($"Mempool size: {blockChainService.PendingTransactions.Count} / {blockChainService.MaxMempoolSize}");
+//Console.WriteLine($"[RESULT] Accepted free transactions: {successfulSpamCount} (Expected: 5)");
+
+//Console.WriteLine("\n=== 2. Eviction Test ===");
+//try
+//{
+//    var highFeeTx = transactionService.CreateTransaction(spammer, alice.Address, 1, spammer.PublicKey);
+//    highFeeTx.Fee = 10;
+//    highFeeTx.Signature = spammer.Sign(highFeeTx.GetDataToSign());
+
+//    blockChainService.AddTransactionToMempool(highFeeTx);
+//    Console.WriteLine($"Mempool size after eviction: {blockChainService.PendingTransactions.Count}");
+//    Console.WriteLine($"Count of free transactions left: {blockChainService.PendingTransactions.Count(t => t.Fee == 0)} (Expected: 4)");
+//}
+//catch (Exception ex) { Console.WriteLine($"Error: {ex.Message}"); }
+
+//blockChainService.PendingTransactions.Clear();
+
+//Console.WriteLine("\n=== 3. Replace-By-Fee (RBF) Test ===");
+//var txLowFee = transactionService.CreateTransaction(alice, bob.Address, 5, alice.PublicKey);
+//txLowFee.Fee = 1;
+//txLowFee.Signature = alice.Sign(txLowFee.GetDataToSign());
+//blockChainService.AddTransactionToMempool(txLowFee);
+
+//var txHighFee = transactionService.CreateTransaction(alice, bob.Address, 5, alice.PublicKey);
+//txHighFee.Fee = 15;
+//txHighFee.Signature = alice.Sign(txHighFee.GetDataToSign());
+//blockChainService.AddTransactionToMempool(txHighFee);
+
+//Console.WriteLine($"Mempool size: {blockChainService.PendingTransactions.Count} (Expected: 1)");
+//Console.WriteLine($"Current transaction Fee in mempool: {blockChainService.PendingTransactions.First().Fee} (Expected: 15)");
+
+//blockChainService.PendingTransactions.Clear();
+
+//Console.WriteLine("\n=== 4. Pending Balance Test ===");
+//Console.WriteLine($"Charlie real balance: {walletService.GetBalance(charlie.Address)} (Expected: 40)");
+
+//var tx1 = transactionService.CreateTransaction(charlie, dave.Address, 30, charlie.PublicKey);
+//blockChainService.AddTransactionToMempool(tx1);
+//Console.WriteLine($"[SUCCESS] First tx (30 coins) added. Charlie pending balance: {blockChainService.GetPendingBalance(charlie.Address)}");
+
+//try
+//{
+//    var tx2 = transactionService.CreateTransaction(charlie, dave.Address, 20, charlie.PublicKey);
+//    blockChainService.AddTransactionToMempool(tx2);
+//    Console.WriteLine("[FAILED] Second tx bypassed pending balance security!");
+//}
+//catch (InvalidOperationException ex)
+//{
+//    Console.WriteLine($"[SUCCESS] Second tx (20 coins) rejected: {ex.Message}");
+//}
+
+
+
+// HW_8
+
+if (File.Exists("blockchain.json")) File.Delete("blockchain.json");
+if (File.Exists("blockchain_backup.json")) File.Delete("blockchain_backup.json");
+
+var cts = CancellationToken.None;
+
+Wallet miner1 = walletService.CreateWallet("Miner 1");
+Wallet miner2 = walletService.CreateWallet("Miner 2");
+Wallet alice = walletService.CreateWallet("Alice");
+Wallet bob = walletService.CreateWallet("Bob");
+
+Console.WriteLine("\n--- TEST 1: HALVING ---");
+
+for (int i = blockChainService.Chain.Count; blockChainService.GetCurrentReward() > 0; i++)
 {
-    try
-    {
-        var tx = transactionService.CreateTransaction(spammer, bob.Address, 1 + i, spammer.PublicKey);
-        tx.Fee = 0;
-        tx.Signature = spammer.Sign(tx.GetDataToSign());
-
-        blockChainService.AddTransactionToMempool(tx);
-        successfulSpamCount++;
-    }
-    catch (InvalidOperationException) { }
+    Console.WriteLine($"Block #{i} -> Reward: {blockChainService.GetCurrentReward()} coins");
+    blockChainService.MineBlock(miner1.Address, cts);
 }
-Console.WriteLine($"Mempool size: {blockChainService.PendingTransactions.Count} / {blockChainService.MaxMempoolSize}");
-Console.WriteLine($"[RESULT] Accepted free transactions: {successfulSpamCount} (Expected: 5)");
 
-Console.WriteLine("\n=== 2. Eviction Test ===");
+Console.WriteLine($"Emission stopped. Current reward: {blockChainService.GetCurrentReward()}. Total blocks: {blockChainService.Chain.Count}");
+
+Console.WriteLine("\n--- TEST 2: MINER'S DILEMMA ---");
+
 try
 {
-    var highFeeTx = transactionService.CreateTransaction(spammer, alice.Address, 1, spammer.PublicKey);
-    highFeeTx.Fee = 10;
-    highFeeTx.Signature = spammer.Sign(highFeeTx.GetDataToSign());
-
-    blockChainService.AddTransactionToMempool(highFeeTx);
-    Console.WriteLine($"Mempool size after eviction: {blockChainService.PendingTransactions.Count}");
-    Console.WriteLine($"Count of free transactions left: {blockChainService.PendingTransactions.Count(t => t.Fee == 0)} (Expected: 4)");
-}
-catch (Exception ex) { Console.WriteLine($"Error: {ex.Message}"); }
-
-blockChainService.PendingTransactions.Clear();
-
-Console.WriteLine("\n=== 3. Replace-By-Fee (RBF) Test ===");
-var txLowFee = transactionService.CreateTransaction(alice, bob.Address, 5, alice.PublicKey);
-txLowFee.Fee = 1;
-txLowFee.Signature = alice.Sign(txLowFee.GetDataToSign());
-blockChainService.AddTransactionToMempool(txLowFee);
-
-var txHighFee = transactionService.CreateTransaction(alice, bob.Address, 5, alice.PublicKey);
-txHighFee.Fee = 15;
-txHighFee.Signature = alice.Sign(txHighFee.GetDataToSign());
-blockChainService.AddTransactionToMempool(txHighFee);
-
-Console.WriteLine($"Mempool size: {blockChainService.PendingTransactions.Count} (Expected: 1)");
-Console.WriteLine($"Current transaction Fee in mempool: {blockChainService.PendingTransactions.First().Fee} (Expected: 15)");
-
-blockChainService.PendingTransactions.Clear();
-
-Console.WriteLine("\n=== 4. Pending Balance Test ===");
-Console.WriteLine($"Charlie real balance: {walletService.GetBalance(charlie.Address)} (Expected: 40)");
-
-var tx1 = transactionService.CreateTransaction(charlie, dave.Address, 30, charlie.PublicKey);
-blockChainService.AddTransactionToMempool(tx1);
-Console.WriteLine($"[SUCCESS] First tx (30 coins) added. Charlie pending balance: {blockChainService.GetPendingBalance(charlie.Address)}");
-
-try
-{
-    var tx2 = transactionService.CreateTransaction(charlie, dave.Address, 20, charlie.PublicKey);
-    blockChainService.AddTransactionToMempool(tx2);
-    Console.WriteLine("[FAILED] Second tx bypassed pending balance security!");
+    blockChainService.MineBlock(miner1.Address, cts);
 }
 catch (InvalidOperationException ex)
 {
-    Console.WriteLine($"[SUCCESS] Second tx (20 coins) rejected: {ex.Message}");
+    Console.ForegroundColor = ConsoleColor.Red;
+    Console.WriteLine($"[CAUGHT] Mining cancelled: {ex.Message}");
+    Console.ResetColor();
 }
+
+Console.WriteLine("\n--- TEST 3: FEE BURNING ---");
+
+var fundAliceTx = transactionService.CreateTransaction(miner1, alice.Address, 100m, miner1.PublicKey);
+fundAliceTx.Fee = 5m;
+fundAliceTx.Signature = miner1.Sign(fundAliceTx.GetDataToSign());
+
+blockChainService.AddTransactionToMempool(fundAliceTx);
+blockChainService.MineBlock(miner1.Address, cts);
+
+var aliceToBobTx = transactionService.CreateTransaction(alice, bob.Address, 20m, alice.PublicKey);
+aliceToBobTx.Fee = 10m;
+aliceToBobTx.Signature = alice.Sign(aliceToBobTx.GetDataToSign());
+
+blockChainService.AddTransactionToMempool(aliceToBobTx);
+
+decimal miner2BalanceBefore = walletService.GetBalance(miner2.Address);
+blockChainService.MineBlock(miner2.Address, cts);
+decimal miner2BalanceAfter = walletService.GetBalance(miner2.Address);
+
+decimal minerProfit = miner2BalanceAfter - miner2BalanceBefore;
+
+Console.WriteLine($"Alice's original fee: 10 coins");
+Console.WriteLine($"Miner 2 profit: {minerProfit} coins");
+Console.WriteLine("Result: Miner received 50%, and the remaining 5 coins were BURNED!");
