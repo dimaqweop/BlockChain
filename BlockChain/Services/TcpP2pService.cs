@@ -12,9 +12,11 @@ namespace BlockChain.Services
         private readonly TcpListener _listener;
         private readonly ConcurrentBag<TcpClient> _clients = new ConcurrentBag<TcpClient>();
         private readonly BlockChainService _blockChainService;
+        private readonly HashingService _hashingService;
         public TcpP2pService(BlockChainService blockChainService, int port)
         {
             _blockChainService = blockChainService;
+            _hashingService = new HashingService();
             _listener = new TcpListener(System.Net.IPAddress.Any, port);
         }
 
@@ -51,7 +53,7 @@ namespace BlockChain.Services
                     var messageJson = Encoding.UTF8.GetString(messageBytes);
                     if (messageJson != null)
                     {
-                        Console.WriteLine($"Received message: {messageJson}");
+                        //Console.WriteLine($"Received message: {messageJson}");
                         ProcessMessage(messageJson);
                     }
 
@@ -76,6 +78,17 @@ namespace BlockChain.Services
                     var newBlock = JsonSerializer.Deserialize<Block>(message.Data);
                     if (newBlock == null) return;
                     var lastBlock = _blockChainService.Chain.Last();
+
+                    string calculatedHash = _hashingService.ComputeHash(newBlock);
+
+                    string requiredPrefix = new string('0', _blockChainService.Difficulty);
+
+                    if (calculatedHash != newBlock.Hash || !calculatedHash.StartsWith(requiredPrefix))
+                    {
+                        Console.WriteLine("[SECURITY] 🚨 A counterfeit unit has been detected!");
+                        break;
+                    }
+
                     if (newBlock.Index == lastBlock.Index + 1 && newBlock.PreviousHash == lastBlock.Hash)
                     {
                         _blockChainService.Chain.Add(newBlock);

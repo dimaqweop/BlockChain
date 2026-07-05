@@ -22,15 +22,16 @@ namespace BlockChain.Services
         private readonly int _adjustmentInterval = 10;
 
         private readonly decimal _rewardAmount = 50;
-        public decimal MaxSupply { get; } = 1000;
+        //public decimal MaxSupply { get; } = 1000;
+        public decimal MaxSupply { get; } = 10000000;
         public decimal TotalMinted { get; private set; } = 0;
 
-        private readonly int maxTransactionAmount = 2;
+        private readonly int maxTransactionAmount = 50;
         private readonly int _halvingInterval = 2;
 
-        public int MaxMempoolSize { get; } = 5;
+        public int MaxMempoolSize { get; } = 100;
 
-        public int MaxBlockSizeBytes { get; } = 256;
+        public int MaxBlockSizeBytes { get; } = 25600;
 
         public BlockChainService()
         {
@@ -274,7 +275,11 @@ namespace BlockChain.Services
                 {
                     if (tx.From != "COINBASE")
                     {
-                        bool isSignatureValid = _walletService.VerifySignature(tx.From, tx.GetDataToSign(), tx.Signature);
+                        bool isSignatureValid = _walletService.VerifySignature(
+                            Convert.ToBase64String(tx.SenderPublicKey),
+                            tx.GetDataToSign(),
+                            tx.Signature
+                        );
 
                         if (!isSignatureValid)
                         {
@@ -298,20 +303,20 @@ namespace BlockChain.Services
 
             var duplicateTransaction = PendingTransactions.FirstOrDefault(t => t.From == transaction.From && t.To == transaction.To && t.Amount == transaction.Amount);
 
-            if (duplicateTransaction != null)
-            {
-                if (transaction.Fee > duplicateTransaction.Fee)
-                {
-                    PendingTransactions.Remove(duplicateTransaction);
-                    PendingTransactions.Add(transaction);
-                    Console.WriteLine($"[RBF SUCCESS] Transaction accelerated! Old Fee: {duplicateTransaction.Fee}, New Fee: {transaction.Fee}");
-                    return;
-                }
-                else
-                {
-                    throw new InvalidOperationException("RBF Failed: New fee must be higher than the existing transaction fee.");
-                }
-            }
+            //if (duplicateTransaction != null)
+            //{
+            //    if (transaction.Fee > duplicateTransaction.Fee)
+            //    {
+            //        PendingTransactions.Remove(duplicateTransaction);
+            //        PendingTransactions.Add(transaction);
+            //        Console.WriteLine($"[RBF SUCCESS] Transaction accelerated! Old Fee: {duplicateTransaction.Fee}, New Fee: {transaction.Fee}");
+            //        return;
+            //    }
+            //    else
+            //    {
+            //        throw new InvalidOperationException("RBF Failed: New fee must be higher than the existing transaction fee.");
+            //    }
+            //}
 
             if (transaction.From != "COINBASE")
             {
@@ -354,7 +359,7 @@ namespace BlockChain.Services
         // Halving
         public decimal GetCurrentReward()
         {
-            int halvingInterval = 3;
+            int halvingInterval = 3000000;
             int halvingCount = Chain.Count / halvingInterval;
 
             decimal reward = _rewardAmount / (decimal)Math.Pow(2, halvingCount);
