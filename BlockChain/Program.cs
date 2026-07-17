@@ -23,16 +23,6 @@ var walletService = new WalletService(blockChainService.Chain);
 var p2pService = new TcpP2pService(blockChainService, int.Parse(port));
 p2pService.Start();
 
-Console.ForegroundColor = ConsoleColor.Blue;
-Console.Write("Enter peer port: ");
-var peerPort = int.Parse(Console.ReadLine());
-if (peerPort != null)
-{
-    await p2pService.ConnectToPeerAsync("127.0.0.1", peerPort);
-    Console.WriteLine("Connected to peer");
-}
-Console.ResetColor();
-
 
 Console.WriteLine("Blockchain Menu");
 Console.WriteLine("1. Mine Block");
@@ -45,6 +35,7 @@ Console.WriteLine("7. Exit");
 Console.WriteLine("8. Change Blockchain");
 Console.WriteLine("9. Clear Blockchain");
 Console.WriteLine("10. Benchmark: Mining with Transactions");
+Console.WriteLine("16. Connect to Peer");
 
 
 var walletAlice = walletService.CreateWallet("Alice");
@@ -234,7 +225,21 @@ while (true)
             Console.WriteLine("Checking validity AFTER attack...");
             displayService.PrintValidationResult(blockChainService.IsValid());
             break;
+        case "15":
 
+            Console.ForegroundColor = ConsoleColor.Blue;
+            Console.Write("Enter peer port: ");
+            var peerPort = int.Parse(Console.ReadLine());
+            if (peerPort != null)
+            {
+                await p2pService.ConnectToPeerAsync("127.0.0.1", peerPort);
+                Console.WriteLine("Connected to peer");
+            }
+            Console.ResetColor();
+            break;
+        case "16":
+            p2pService.BroadcastSync();
+            break;
         case "7":
             return;
     }

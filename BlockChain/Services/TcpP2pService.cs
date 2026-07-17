@@ -97,15 +97,21 @@ namespace BlockChain.Services
                     else
                     {
                         Console.WriteLine($"Received block is not valid. Expected index: {lastBlock.Index + 1}, received index: {newBlock.Index}");
+                        BroadcastSync();
                     }
                     break;
                 case MessageType.SyncChain:
                     var receivedChain = JsonSerializer.Deserialize<List<Block>>(message.Data);
                     if (receivedChain == null) return;
-                    if (receivedChain.Count > _blockChainService.Chain.Count)
+                    var consensus = _blockChainService.ResolveConflicts(receivedChain);
+                    if (consensus)
                     {
                         _blockChainService.Chain = receivedChain;
                         Console.WriteLine($"Blockchain synchronized. New chain length: {receivedChain.Count}");
+                    }
+                    else
+                    {
+                        BroadcastSync();
                     }
                     break;
                 default:
@@ -154,6 +160,7 @@ namespace BlockChain.Services
                 await client.ConnectAsync(ipAddress, port);
                 _clients.Add(client);
                 Console.WriteLine($"Connected to peer: {ipAddress}:{port}");
+                BroadcastSync();
                 Task.Run(() => HandleClientAsync(client));
 
             }
@@ -161,6 +168,12 @@ namespace BlockChain.Services
             {
                 Console.WriteLine($"Error connecting to peer {ipAddress}:{port} - {ex.Message}");
             }
+        }
+
+        public void BroadcastSync()
+        {
+            var message = new P2pMessage(MessageType.SyncChain, JsonSerializer.Serialize(_blockChainService.Chain));
+            BroadcastMessage(message);
         }
     }
 }

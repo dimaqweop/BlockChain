@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.ExceptionServices;
 using System.Text;
 using System.Threading.Tasks;
 using BlockChain.Models;
@@ -37,7 +38,7 @@ namespace BlockChain.Services
         {
 
             Chain = new List<Block>();
-            
+
             _hashingService = new HashingService();
             _transactionService = new TransactionService(Chain);
             _miningService = new MiningService(_hashingService);
@@ -284,7 +285,7 @@ namespace BlockChain.Services
                         if (!isSignatureValid)
                         {
                             Console.WriteLine($"[CRITICAL THREAT]: A fraudulent transaction has been detected in block {currentBlock.Index}!");
-                            return false; 
+                            return false;
                         }
                     }
                 }
@@ -370,6 +371,78 @@ namespace BlockChain.Services
             }
 
             return reward;
+        }
+
+        public double getChainWeight(List<Block> Chain)
+        {
+            double totalWeight = 0;
+            foreach (var block in Chain)
+            {
+                totalWeight += Math.Pow(2, block.Difficulty);
+            }
+            return totalWeight;
+        }
+
+        public bool IsChainValid(List<Block> externalChain)
+        {
+            for (int i = 1; i < externalChain.Count; i++)
+            {
+                Block currentBlock = externalChain[i];
+                Block previousBLock = externalChain[i - 1];
+                if (currentBlock.Hash != _hashingService.ComputeHash(currentBlock) || currentBlock.PreviousHash != previousBLock.Hash)
+                {
+                    return false;
+                }
+            }
+
+            double currentChainWeight = getChainWeight(Chain);
+            double externalChainWeight = getChainWeight(externalChain);
+            return externalChainWeight > currentChainWeight;
+        }
+
+        public bool ResolveConflicts(List<Block> externalChain)
+        {
+            if (IsChainValid(externalChain))
+            {
+                var currentTotalWork = getChainWeight(Chain);
+                var externalTotalWork = getChainWeight(externalChain);
+
+                if (externalTotalWork <= currentTotalWork)
+                {
+                    return false;
+                }
+
+                var oldTransactions = Chain.SelectMany(b => b.Transactions).Where(tx => tx.From != "COINBASE").ToList();
+                var newTransactions = externalChain.SelectMany(b => b.Transactions).Where(tx => tx.From != "COINBASE").ToList();
+
+                var orphanedTransactions = oldTransactions
+                    .Where(oldTx => !newTransactions.Any(newTx => newTx.Id == oldTx.Id))
+                    .ToList();
+
+                Chain.Clear();
+                Chain.AddRange(externalChain);
+
+                foreach (var tx in orphanedTransactions)
+                {
+                    decimal currentBalance = _walletService.GetBalance(tx.From);
+                    decimal requiredAmount = tx.Amount + tx.Fee;
+
+                    if (currentBalance >= requiredAmount)
+                    {
+                        // Якщо балансу достатньо в новій реальності — повертаємо в чергу
+                        PendingTransactions.Add(tx);
+                    }
+                    else
+                    {
+                        Console.WriteLine($"[SECURITY] 🚨 Transaction {tx.Id} was rejected in the mempool (double spend / insufficient funds)!");
+                    }
+                }
+
+                //Chain = externalChain;
+                _fileStorageService.SaveBlockChain(Chain);
+                return true;
+            }
+            return false;
         }
     }
 }
