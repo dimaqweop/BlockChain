@@ -8,9 +8,18 @@ using System.Text.Json;
 
 namespace BlockChain.Models
 {
+    public enum TransactionType
+    {
+        Transfer,
+        ICO
+    }
+
     public class Transaction
     {
         public string Id { get; set; }
+        public TransactionType Type { get; set; } = TransactionType.Transfer;
+        public string Ticker { get; set; } = "BASE";
+        public decimal Emission { get; set; } = 0;
         public string From { get; set; }
         public string To { get; set; }
         public decimal Amount { get; set; }
@@ -31,12 +40,12 @@ namespace BlockChain.Models
                 return $"{Id} | {From} -> {To} | Amount: {Amount} | Time: {TimeStamp.ToString("O")} {Convert.ToHexString(Signature)}";
             }
 
-            return $"{Id} | {From} -> {To} | Amount: {Amount} | Time: {TimeStamp.ToString("O")} | Fee: {Fee}";
+            return $"{Id} | {Type} [{Ticker}] | {From} -> {To} | Amount: {Amount} | Emission: {Emission} | Time: {TimeStamp.ToString("O")} | Fee: {Fee}";
         }
 
         public byte[] GetDataToSign()
         {
-            string row = $"{Id}{From}{To}{Amount}{TimeStamp.ToString("O")}{Fee}";
+            string row = $"{Id}{Type}{Ticker}{Emission}{From}{To}{Amount}{TimeStamp:O}{Fee}";
             return Encoding.UTF8.GetBytes(row);
         }
 

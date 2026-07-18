@@ -32,25 +32,40 @@ namespace BlockChain.Services
             return ecdsa.VerifyData(data, signature, HashAlgorithmName.SHA256);
         }
 
-        public decimal GetBalance(string address)
+        public Dictionary<string, decimal> GetBalance(string address)
         {
-            decimal balance = 0;
+            var balances = new Dictionary<string, decimal>();
+            balances["BASE"] = 0m;
             foreach (var block in blockChain)
             {
                 foreach (var transaction in block.Transactions)
                 {
                     if (transaction.From == address)
                     {
-                        balance -= transaction.Amount + transaction.Fee;
+                        balances["BASE"] -= transaction.Fee;
+
+                        if (transaction.Type == TransactionType.ICO)
+                        {
+                            balances[transaction.Ticker] = balances.GetValueOrDefault(transaction.Ticker) + transaction.Emission;
+                        }
+                        else if (transaction.Type == TransactionType.Transfer)
+                        {
+                            balances[transaction.Ticker] = balances.GetValueOrDefault(transaction.Ticker) - transaction.Amount;
+                        }
                     }
                     if (transaction.To == address)
                     {
-                        balance += transaction.Amount;
+                        if (transaction.Type == TransactionType.Transfer || transaction.From == "COINBASE")
+                        {
+                            balances[transaction.Ticker] = balances.GetValueOrDefault(transaction.Ticker) + transaction.Amount;
+                        }
                     }
                 }
             }
-            return balance;
+            return balances;
         }
+
+
         public byte[] SignMessage(Wallet wallet, string message)
         {
             byte[] dataToSign = Encoding.UTF8.GetBytes(message);

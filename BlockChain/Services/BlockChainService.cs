@@ -86,15 +86,20 @@ namespace BlockChain.Services
 
             var acceptedTransactions = new List<Transaction>();
             int currentBlockSizeBytes = 0;
-            var tempBalances = new Dictionary<string, decimal>();
+            var tempBalances = new Dictionary<string, Dictionary<string, decimal>>();
             var transactionsToRemoveFromPool = new List<Transaction>();
             var transactionsToProcess = PendingTransactions.OrderByDescending(t => t.Fee).ToList();
 
             foreach (var transaction in transactionsToProcess)
             {
-                if (!_transactionService.ValidateTransaction(transaction).IsValid)
+                var validation = _transactionService.ValidateTransaction(transaction);
+                if (!validation.IsValid)
                 {
-                    throw new InvalidOperationException($"Invalid transaction: {transaction.Id}");
+                    Console.ForegroundColor = ConsoleColor.Red;
+                    Console.WriteLine($"[MEMPOOL CLEANUP] Транзакція {transaction.Id} видалена: {validation.ErrorMessage}");
+                    Console.ResetColor();
+                    transactionsToRemoveFromPool.Add(transaction);
+                    continue; 
                 }
 
                 if (transaction.From != "COINBASE")
@@ -104,27 +109,28 @@ namespace BlockChain.Services
                         tempBalances[transaction.From] = _walletService.GetBalance(transaction.From);
                     }
 
-                    decimal totalCost = transaction.Amount + transaction.Fee;
-
-                    if (tempBalances[transaction.From] < totalCost)
+                    decimal baseBalance = tempBalances[transaction.From].GetValueOrDefault("BASE");
+                    if (baseBalance < transaction.Fee)
                     {
-                        throw new InvalidOperationException($"Double spend detected! Temp balance for {transaction.From} is lower than transfer sum.");
+                        throw new InvalidOperationException($"Double spend detected! Insufficient BASE for fee for {transaction.From}.");
                     }
+                    tempBalances[transaction.From]["BASE"] = baseBalance - transaction.Fee;
 
-                    tempBalances[transaction.From] -= transaction.Amount;
+                    if (transaction.Type == TransactionType.Transfer)
+                    {
+                        decimal tokenBalance = tempBalances[transaction.From].GetValueOrDefault(transaction.Ticker);
+                        if (tokenBalance < transaction.Amount)
+                        {
+                            throw new InvalidOperationException($"Double spend detected! Insufficient {transaction.Ticker} for {transaction.From}.");
+                        }
+                        tempBalances[transaction.From][transaction.Ticker] = tokenBalance - transaction.Amount;
+                    }
                 }
 
                 int transactionBytes = Encoding.UTF8.GetByteCount(transaction.ToRowString());
 
-                if (currentBlockSizeBytes + transactionBytes > newBlock.MaxBlockSizeBytes)
-                {
-                    break;
-                }
-
-                if (acceptedTransactions.Count >= maxTransactionAmount)
-                {
-                    break;
-                }
+                if (currentBlockSizeBytes + transactionBytes > newBlock.MaxBlockSizeBytes) break;
+                if (acceptedTransactions.Count >= maxTransactionAmount) break;
 
                 acceptedTransactions.Add(transaction);
                 transactionsToRemoveFromPool.Add(transaction);
@@ -203,7 +209,7 @@ namespace BlockChain.Services
             decimal totalUsersBalance = 0;
             foreach (var address in uniqueAddresses)
             {
-                totalUsersBalance += _walletService.GetBalance(address);
+                totalUsersBalance += _walletService.GetBalance(address).GetValueOrDefault("BASE");
             }
 
             return totalUsersBalance == TotalMinted;
@@ -321,10 +327,37 @@ namespace BlockChain.Services
 
             if (transaction.From != "COINBASE")
             {
-                decimal pendingBalance = GetPendingBalance(transaction.From);
-                if (pendingBalance < transaction.Amount + transaction.Fee)
+                var pendingBalances = GetPendingBalances(transaction.From);
+                decimal pendingBase = pendingBalances.GetValueOrDefault("BASE");
+                decimal pendingToken = pendingBalances.GetValueOrDefault(transaction.Ticker);
+
+                if (transaction.Type == TransactionType.ICO)
                 {
-                    throw new InvalidOperationException("Insufficient pending balance for the transaction");
+                    if (pendingBase < transaction.Fee)
+                    {
+                        throw new InvalidOperationException("Insufficient pending BASE balance for ICO tax");
+                    }
+                }
+                else
+                {
+                    if (transaction.Ticker == "BASE")
+                    {
+                        if (pendingBase < transaction.Amount + transaction.Fee)
+                        {
+                            throw new InvalidOperationException("Insufficient pending BASE balance for transfer amount and fee");
+                        }
+                    }
+                    else
+                    {
+                        if (pendingBase < transaction.Fee)
+                        {
+                            throw new InvalidOperationException("Insufficient pending BASE balance for transaction fee");
+                        }
+                        if (pendingToken < transaction.Amount)
+                        {
+                            throw new InvalidOperationException($"Insufficient pending {transaction.Ticker} balance for transfer");
+                        }
+                    }
                 }
             }
 
@@ -349,12 +382,20 @@ namespace BlockChain.Services
             }
         }
 
-        public decimal GetPendingBalance(string address)
+        public Dictionary<string, decimal> GetPendingBalances(string address)
         {
-            decimal realBalance = _walletService.GetBalance(address);
+            var realBalances = _walletService.GetBalance(address);
 
-            decimal pendingSpent = PendingTransactions.Where(t => t.From == address).Sum(t => t.Amount + t.Fee);
-            return realBalance - pendingSpent;
+            foreach (var t in PendingTransactions.Where(tx => tx.From == address))
+            {
+                realBalances["BASE"] = realBalances.GetValueOrDefault("BASE") - t.Fee;
+
+                if (t.Type == TransactionType.Transfer)
+                {
+                    realBalances[t.Ticker] = realBalances.GetValueOrDefault(t.Ticker) - t.Amount;
+                }
+            }
+            return realBalances;
         }
 
         // Halving
@@ -424,12 +465,17 @@ namespace BlockChain.Services
 
                 foreach (var tx in orphanedTransactions)
                 {
-                    decimal currentBalance = _walletService.GetBalance(tx.From);
-                    decimal requiredAmount = tx.Amount + tx.Fee;
+                    var currentBalances = _walletService.GetBalance(tx.From);
+                    bool hasEnoughBase = currentBalances.GetValueOrDefault("BASE") >= tx.Fee;
+                    bool hasEnoughToken = true;
 
-                    if (currentBalance >= requiredAmount)
+                    if (tx.Type == TransactionType.Transfer)
                     {
-                        // Якщо балансу достатньо в новій реальності — повертаємо в чергу
+                        hasEnoughToken = currentBalances.GetValueOrDefault(tx.Ticker) >= tx.Amount;
+                    }
+
+                    if (hasEnoughBase && hasEnoughToken)
+                    {
                         PendingTransactions.Add(tx);
                     }
                     else

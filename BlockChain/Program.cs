@@ -35,7 +35,13 @@ Console.WriteLine("7. Exit");
 Console.WriteLine("8. Change Blockchain");
 Console.WriteLine("9. Clear Blockchain");
 Console.WriteLine("10. Benchmark: Mining with Transactions");
-Console.WriteLine("16. Connect to Peer");
+Console.WriteLine("11. Merkle Proof Test");
+Console.WriteLine("12. Merkle Tree Malicious Test");
+Console.WriteLine("13. P2P Security Test");
+Console.WriteLine("14. Merkle Root Integration Test");
+Console.WriteLine("15. Connect to Peer");
+Console.WriteLine("16. Broadcast Sync");
+Console.WriteLine("17. Run Multi-Currency Economy Demo (ICO & Transfer)");
 
 
 var walletAlice = walletService.CreateWallet("Alice");
@@ -81,46 +87,46 @@ while (true)
             blockChainService.Chain.Clear();
             new FileStorageService().ClearBlockChain();
             return;
-        case "10":
-            Console.WriteLine("\n--- Starting Benchmark ---");
+        //case "10":
+        //    Console.WriteLine("\n--- Starting Benchmark ---");
 
-            int txCount = 9;
+        //    int txCount = 9;
 
-            if (walletService.GetBalance(walletAlice.Address) < (txCount * 2))
-            {
-                Console.WriteLine("Mining initial block to fund Alice...");
-                blockChainService.MineBlock(walletAlice.Address, CancellationToken.None);
-            }
+        //    if (walletService.GetBalance(walletAlice.Address) < (txCount * 2))
+        //    {
+        //        Console.WriteLine("Mining initial block to fund Alice...");
+        //        blockChainService.MineBlock(walletAlice.Address, CancellationToken.None);
+        //    }
 
-            Console.WriteLine($"Generating and adding {txCount} transactions to mempool...");
-            for (int i = 0; i < txCount; i++)
-            {
-                try
-                {
-                    var txBench = transactionService.CreateTransaction(walletAlice, walletBob.Address, 1, walletAlice.PublicKey);
-                    blockChainService.AddTransactionToMempool(txBench);
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"Error adding tx #{i}: {ex.Message}");
-                    break;
-                }
-            }
+        //    Console.WriteLine($"Generating and adding {txCount} transactions to mempool...");
+        //    for (int i = 0; i < txCount; i++)
+        //    {
+        //        try
+        //        {
+        //            var txBench = transactionService.CreateTransaction(walletAlice, walletBob.Address, 1, walletAlice.PublicKey);
+        //            blockChainService.AddTransactionToMempool(txBench);
+        //        }
+        //        catch (Exception ex)
+        //        {
+        //            Console.WriteLine($"Error adding tx #{i}: {ex.Message}");
+        //            break;
+        //        }
+        //    }
 
-            Console.WriteLine($"Mining block with {blockChainService.PendingTransactions.Count} transactions...");
+        //    Console.WriteLine($"Mining block with {blockChainService.PendingTransactions.Count} transactions...");
 
-            var sw = Stopwatch.StartNew();
-            var benchmarkBlock = blockChainService.MineBlock(walletAlice.Address, CancellationToken.None);
-            sw.Stop();
+        //    var sw = Stopwatch.StartNew();
+        //    var benchmarkBlock = blockChainService.MineBlock(walletAlice.Address, CancellationToken.None);
+        //    sw.Stop();
 
-            Console.WriteLine("\n" + new string('=', 50));
-            Console.WriteLine("[ BENCHMARK RESULTS ]");
-            Console.WriteLine($"Difficulty: {blockChainService.Difficulty}");
-            Console.WriteLine($"Transactions in block: {benchmarkBlock.Transactions.Count}");
-            Console.WriteLine($"Time taken: {sw.Elapsed.TotalSeconds:F4} seconds ({sw.ElapsedMilliseconds} ms)");
-            Console.WriteLine($"Nonce found: {benchmarkBlock.Nonce}");
-            Console.WriteLine(new string('=', 50) + "\n");
-            break;
+        //    Console.WriteLine("\n" + new string('=', 50));
+        //    Console.WriteLine("[ BENCHMARK RESULTS ]");
+        //    Console.WriteLine($"Difficulty: {blockChainService.Difficulty}");
+        //    Console.WriteLine($"Transactions in block: {benchmarkBlock.Transactions.Count}");
+        //    Console.WriteLine($"Time taken: {sw.Elapsed.TotalSeconds:F4} seconds ({sw.ElapsedMilliseconds} ms)");
+        //    Console.WriteLine($"Nonce found: {benchmarkBlock.Nonce}");
+        //    Console.WriteLine(new string('=', 50) + "\n");
+        //    break;
         case "11":
 
             Console.WriteLine("\n Test Merkle Proof");
@@ -239,6 +245,158 @@ while (true)
             break;
         case "16":
             p2pService.BroadcastSync();
+            break;
+        case "17":
+            Console.WriteLine("\n=== MULTI-CURRENCY ECONOMY DEMONSTRATION ===");
+
+            // 1. Аліса майнить блоки
+            Console.WriteLine("\n1. Alice mines blocks to accumulate 'BASE' capital...");
+            blockChainService.MineBlock(walletAlice.Address, CancellationToken.None);
+            blockChainService.MineBlock(walletAlice.Address, CancellationToken.None);
+            blockChainService.MineBlock(walletAlice.Address, CancellationToken.None);
+            Console.WriteLine($"Alice's balance: {walletService.GetBalance(walletAlice.Address).GetValueOrDefault("BASE")} BASE");
+
+            // 2. Аліса проводить ICO
+            Console.WriteLine("\n2. Alice successfully conducts an ICO for 1000 'ALICE_COIN'...");
+            var icoAlice = new Transaction(walletAlice.Address, walletAlice.Address, 0, walletAlice.PublicKey)
+            {
+                Type = TransactionType.ICO,
+                Ticker = "ALICE_COIN",
+                Emission = 1000,
+                Fee = 100
+            };
+            icoAlice.Signature = walletService.SignMessage(walletAlice, Encoding.UTF8.GetString(icoAlice.GetDataToSign()));
+            blockChainService.AddTransactionToMempool(icoAlice);
+            blockChainService.MineBlock(walletAlice.Address, CancellationToken.None);
+            Console.WriteLine("Success!");
+
+            // 3. Боб без грошей
+            Console.WriteLine("\n3. Bob tries to issue 'BOB_COIN' while being broke...");
+            var icoBob = new Transaction(walletBob.Address, walletBob.Address, 0, walletBob.PublicKey)
+            {
+                Type = TransactionType.ICO,
+                Ticker = "BOB_COIN",
+                Emission = 5000,
+                Fee = 100
+            };
+            icoBob.Signature = walletService.SignMessage(walletBob, Encoding.UTF8.GetString(icoBob.GetDataToSign()));
+            try
+            {
+                blockChainService.AddTransactionToMempool(icoBob);
+            }
+            catch (Exception ex)
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine($"NETWORK REJECTION: {ex.Message}");
+                Console.ResetColor();
+            }
+
+            // 4. Плагіат
+            Console.WriteLine("\n4. Bob tries to steal the brand 'ALICE_COIN' (Plagiarism)...");
+            var giveBobBase = new Transaction(walletAlice.Address, walletBob.Address, 110, walletAlice.PublicKey) { Type = TransactionType.Transfer, Ticker = "BASE", Amount = 110, Fee = 1 };
+            giveBobBase.Signature = walletService.SignMessage(walletAlice, Encoding.UTF8.GetString(giveBobBase.GetDataToSign()));
+            blockChainService.AddTransactionToMempool(giveBobBase);
+            blockChainService.MineBlock(walletAlice.Address, CancellationToken.None);
+
+            var stealAliceCoin = new Transaction(walletBob.Address, walletBob.Address, 0, walletBob.PublicKey)
+            {
+                Type = TransactionType.ICO,
+                Ticker = "ALICE_COIN",
+                Emission = 999,
+                Fee = 100
+            };
+            stealAliceCoin.Signature = walletService.SignMessage(walletBob, Encoding.UTF8.GetString(stealAliceCoin.GetDataToSign()));
+            try
+            {
+                blockChainService.AddTransactionToMempool(stealAliceCoin);
+            }
+            catch (Exception ex)
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine($"NETWORK REJECTION: {ex.Message}");
+                Console.ResetColor();
+            }
+
+            // 5. Переказ нових токенів
+            Console.WriteLine("\n5. Alice successfully transfers 300 'ALICE_COIN' to Bob...");
+            var transferToken = new Transaction(walletAlice.Address, walletBob.Address, 300, walletAlice.PublicKey)
+            {
+                Type = TransactionType.Transfer,
+                Ticker = "ALICE_COIN",
+                Amount = 300,
+                Fee = 5
+            };
+            transferToken.Signature = walletService.SignMessage(walletAlice, Encoding.UTF8.GetString(transferToken.GetDataToSign()));
+            blockChainService.AddTransactionToMempool(transferToken);
+            blockChainService.MineBlock(walletAlice.Address, CancellationToken.None);
+            Console.WriteLine("Success!");
+
+            // 6. Фінальний результат
+            Console.WriteLine("\n6. FINAL MULTI-CURRENCY PORTFOLIOS:");
+            Console.WriteLine(new string('-', 30));
+            Console.WriteLine("Alice's Wallet:");
+            foreach (var asset in walletService.GetBalance(walletAlice.Address))
+                Console.WriteLine($"  [{asset.Key}]: {asset.Value}");
+
+            Console.WriteLine("\nBob's Wallet:");
+            foreach (var asset in walletService.GetBalance(walletBob.Address))
+                Console.WriteLine($"  [{asset.Key}]: {asset.Value}");
+            Console.WriteLine(new string('-', 30) + "\n");
+            break;
+        case "18":
+            Console.WriteLine("\n=== EXTRA TASK: BATTLE FOR THE TICKER (MANUAL FORK) ===");
+            Console.Write("Is this Node A (shorter chain) or Node B (longer chain)? (Enter A or B): ");
+            var nodeRole = Console.ReadLine()?.Trim().ToUpper();
+
+            if (nodeRole == "A")
+            {
+                Console.WriteLine("\n[NODE A] Mining initial blocks for 'BASE' capital...");
+                blockChainService.MineBlock(walletAlice.Address, CancellationToken.None);
+                blockChainService.MineBlock(walletAlice.Address, CancellationToken.None);
+
+                Console.WriteLine("[NODE A] Alice issues 'MEME' token (1000 supply) and mines 1 block.");
+                var icoA = new Transaction(walletAlice.Address, walletAlice.Address, 0, walletAlice.PublicKey)
+                {
+                    Type = TransactionType.ICO,
+                    Ticker = "MEME",
+                    Emission = 1000,
+                    Fee = 100
+                };
+                icoA.Signature = walletService.SignMessage(walletAlice, Encoding.UTF8.GetString(icoA.GetDataToSign()));
+
+                blockChainService.AddTransactionToMempool(icoA);
+                blockChainService.MineBlock(walletAlice.Address, CancellationToken.None);
+
+                Console.WriteLine($"\n[NODE A READY] Current chain length: {blockChainService.Chain.Count}");
+                Console.WriteLine("Wait for Node B to be ready, then connect them (Option 15).");
+            }
+            else if (nodeRole == "B")
+            {
+                Console.WriteLine("\n[NODE B] Mining initial blocks for 'BASE' capital...");
+                blockChainService.MineBlock(walletBob.Address, CancellationToken.None);
+                blockChainService.MineBlock(walletBob.Address, CancellationToken.None);
+
+                Console.WriteLine("[NODE B] Bob issues 'MEME' token (5000 supply) and mines 2 blocks (longer chain!).");
+                var icoB = new Transaction(walletBob.Address, walletBob.Address, 0, walletBob.PublicKey)
+                {
+                    Type = TransactionType.ICO,
+                    Ticker = "MEME",
+                    Emission = 5000,
+                    Fee = 100
+                };
+                icoB.Signature = walletService.SignMessage(walletBob, Encoding.UTF8.GetString(icoB.GetDataToSign()));
+
+                blockChainService.AddTransactionToMempool(icoB);
+                blockChainService.MineBlock(walletBob.Address, CancellationToken.None); // Блок з ICO Боба
+                blockChainService.MineBlock(walletBob.Address, CancellationToken.None); // Порожній блок для переваги у вазі
+
+                Console.WriteLine($"\n[NODE B READY] Current chain length: {blockChainService.Chain.Count}");
+                Console.WriteLine("Now connect Node A to this Node (using Option 15 on Node A).");
+            }
+            else
+            {
+                Console.WriteLine("Invalid input. Please enter 'A' or 'B'.");
+            }
             break;
         case "7":
             return;
